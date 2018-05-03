@@ -2,6 +2,7 @@ import tkinter as tk
 import time
 from Database import FGR_DB
 from Register import Register
+from Guests import Guests
 
 def write_slogan():
     print("Tkinter is easy to use!")
@@ -17,15 +18,18 @@ class FGR:
         self.database = FGR_DB()
         #self.database.test_populate_database()
 
+        #initialize register
+        self.register = Register(root, self.database)
+
+        #initialize Guests
+        self.guests = Guests(root, self.database)
+
         #initialize GUI
         self.root=root
         self.root_frm = tk.Frame(self.root)
         self.root_frm.grid()
         self.init_menu()
         self.init_widgets()
-
-        #initialize register
-        self.register = Register(root, self.database)
 
         #initialize mode
         self.mode = self.Mode.admin
@@ -78,7 +82,7 @@ class FGR:
         self.main_mnu=tk.Menu()
         self.menu_mnu=tk.Menu()
         self.main_mnu.add_cascade(label="Menu", menu=self.menu_mnu)
-        self.menu_mnu.add_command(label="Gasten", command=self.add_guest)
+        self.menu_mnu.add_command(label="Gasten", command=self.guests.show_guests_window)
         self.menu_mnu.add_command(label="Registraties", command=self.add_guest)
         self.menu_mnu.add_command(label="Instellingen", command=self.add_guest)
         self.menu_mnu.add_command(label="Exporteer", command=self.add_guest)

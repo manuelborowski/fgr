@@ -27,6 +27,16 @@ class Registration:
         self.badge_id = db_row['badge_id']
 
 class FGR_DB :
+    def __init__(self):
+        self.cnx = sqlite3.connect(self.DB_NAME, detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
+        self.cnx.row_factory = sqlite3.Row
+        self.csr = self.cnx.cursor()
+
+        #create tables, if they do not exist yet
+        for name, ddl in self.TABLES.items():
+            print("Creating table {}: ".format(name), end='')
+            self.csr.execute(ddl)
+
     DB_NAME = 'resources/fgr.db'
 
     TABLES = {}
@@ -46,19 +56,29 @@ class FGR_DB :
         "  'time' timestamp,"
         "  direction TEXT,"
         "  auto_added BOOL,"
-        "  badge_id TEXT NOT NULL REFERENCES guests (badge)"
+        "  badge_id TEXT NOT NULL REFERENCES guests (badge) ON DELETE CASCADE"
         ")")
 
     ADD_GUEST = ("INSERT INTO guests "
                  "(first_name, last_name, company, email, phone, badge)"
                  "VALUES (?, ?, ?, ?, ?, ?)")
 
+    UPDATE_GUEST = ("UPDATE guests SET "
+                    "first_name=?,"
+                    "last_name=?,"
+                    "company=?,"
+                    "email=?,"
+                    "phone=?"
+                    "WHERE badge=?;")
+
+
+
+
     ADD_REGISTRATION =("INSERT INTO registrations "
                  "(time, direction, auto_added, badge_id)"
                  "VALUES (?, ?, ?, ?)")
 
     def test_populate_database(self):
-        cursor = self.cnx.cursor()
         guests = [
             ('voornaam1', 'achternaam1', 'bedrijf1', 'email1@test.be', '0311111', '11'),
             ('voornaam2', 'achternaam2', 'bedrijf2', 'email2@test.be', '0322222', '22'),
@@ -71,54 +91,80 @@ class FGR_DB :
             ['18/2/2018 19:59:13', ('UIT', 'F', '22')],
         ]
         for i in guests:
-            cursor.execute(self.ADD_GUEST, i)
+            self.csr.execute(self.ADD_GUEST, i)
 
         for i in registrations:
             d = datetime.datetime.strptime(i[0], '%d/%m/%Y %H:%M:%S')
-            cursor.execute(self.ADD_REGISTRATION, (d,)+i[1])
+            self.csr.execute(self.ADD_REGISTRATION, (d,)+i[1])
 
         print('Database populated')
         self.cnx.commit()
-        cursor.close()
 
-
-    def __init__(self):
-        self.cnx = sqlite3.connect(self.DB_NAME, detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
-        self.cnx.row_factory = sqlite3.Row
-        cursor = self.cnx.cursor()
-
-        for name, ddl in self.TABLES.items():
-            print("Creating table {}: ".format(name), end='')
-            cursor.execute(ddl)
-
-        cursor.close()
 
     def find_guest_from_badge(self, badge):
-        c = self.cnx.cursor()
-        c.execute('select * from guests where badge=?', (badge,))
-        r = c.fetchone()
+        self.csr.execute('select * from guests where badge=?', (badge,))
+        r = self.csr.fetchone()
         if r is None:
             guest = Guest()
         else:
             guest = Guest(r)
-        c.close()
         return guest
 
+
+    def add_guest(self, badge, first_name, last_name, company, email, phone):
+        rslt = True
+        try:
+            self.csr.execute(self.ADD_GUEST, (first_name, last_name, company, email, phone, badge))
+        except sqlite3.Error as e:
+            rslt = False
+        self.cnx.commit()
+        print("Guest added : {}, {}, {}, {}, {}, {}".format(first_name, last_name, company, email, phone, badge))
+        return rslt
+
+
+    def delete_guest(self, badge):
+        rslt = True
+        try:
+            self.csr.execute('delete from guests where badge=?',(badge, ))
+        except sqlite3.Error as e:
+            rslt = False
+        return rslt
+
+
+    def update_guest(self, badge, first_name, last_name, company, email, phone):
+        rslt = True
+        try:
+            self.csr.execute(self.UPDATE_GUEST,(first_name, last_name, company, email, phone, badge))
+        except:
+            rslt = False
+        self.cnx.commit()
+        return rslt
+
+
+    def get_guests(self):
+        self.csr.execute('select * from guests')
+        r = self.csr.fetchall()
+        l = []
+        for i in r:
+            l.append(Guest(i))
+        return l
+
     def add_registration(self, badge_id, time, direction, auto_added=False):
-        c = self.cnx.cursor()
-        c.execute(self.ADD_REGISTRATION, (time, direction, auto_added, badge_id))
+        try:
+            self.csr.execute(self.ADD_REGISTRATION, (time, direction, auto_added, badge_id))
+        except sqlite3.Error as e:
+            pass
         self.cnx.commit()
         print("Registration added : {}, {}, {}, {}".format(badge_id, time, direction, auto_added))
-        c.close()
+
 
     #offset_from_last : 0 (last item), -1 (item before last item), ...
-    def get_registration(self, badge_id, offset_from_last=0):
+    def find_registration_from_badge(self, badge_id, offset_from_last=0):
         if offset_from_last > 0:
             #registration not found
             return Registration()
-        c = self.cnx.cursor()
-        c.execute('select * from registrations where badge_id=? order by time desc', (badge_id, ))
-        lst = c.fetchmany(1 - offset_from_last)
+        self.csr.execute('select * from registrations where badge_id=? order by time desc', (badge_id, ))
+        lst = self.csr.fetchmany(1 - offset_from_last)
         if not lst:
             #empty list, nothing found
             registration = Registration()
@@ -128,18 +174,19 @@ class FGR_DB :
             except IndexError as e:
                 #out of range
                 registration = Registration()
-        c.close()
         return registration
 
-    def clear_registration(self, id):
+
+    def delete_registration(self, id):
+        rslt = True
         if id < 1:
-            return
-        c = self.cnx.cursor()
+            return False
         try:
-            c.execute('delete from registrations where id=?',(id, ))
+            self.csr.execute('delete from registrations where id=?',(id, ))
         except sqlite3.Error as e:
-            pass
-        c.close()
+            rslt = False
+        return rslt
+
 
     def close(self):
         self.cnx.close()

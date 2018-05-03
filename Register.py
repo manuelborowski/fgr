@@ -11,8 +11,8 @@ class Register:
         print(guest.company)
         time = datetime.datetime.now()
         print(time.date())
-        registration_last = self.database.get_registration(guest.badge)
-        registration_next_to_last = self.database.get_registration(guest.badge, -1)
+        registration_last = self.database.find_registration_from_badge(guest.badge)
+        registration_next_to_last = self.database.find_registration_from_badge(guest.badge, -1)
         if not registration_last.found:
             #no registrations yet
             print('First registration')
@@ -24,7 +24,7 @@ class Register:
                 print('Second registration on current day')
             else:
                 print('Third registration this day, remove the last one and a new one')
-                self.database.clear_registration(registration_last.id)
+                self.database.delete_registration(registration_last.id)
         elif registration_next_to_last.found:
             if registration_last.time.date() == registration_next_to_last.time.date():
                 #previous two registrations have the same date, hence badge IN
