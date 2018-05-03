@@ -110,6 +110,50 @@ class FGR_DB :
             guest = Guest(r)
         return guest
 
+    def find_guests(self, guest):
+        qs = 'SELECT * FROM guests WHERE '
+        added = False
+        if guest.first_name:
+            qs += 'first_name LIKE \'%{}%\''.format(guest.first_name)
+            added = True
+        if guest.last_name:
+            if added:
+                qs += ' AND '
+            qs += 'last_name LIKE \'%{}%\''.format(guest.last_name)
+            added = True
+
+        if guest.company:
+            if added:
+                qs += ' AND '
+            qs += 'company LIKE \'%{}%\''.format(guest.company)
+            added = True
+
+        if guest.email:
+            if added:
+                qs += ' AND '
+            qs += 'email LIKE \'%{}%\''.format(guest.email)
+            added = True
+
+        if guest.phone:
+            if added:
+                qs += ' AND '
+            qs += 'phone LIKE \'%{}%\''.format(guest.phone)
+            added = True
+
+        if guest.badge:
+            if added:
+                qs += ' AND '
+            qs += 'badge LIKE \'%{}%\''.format(guest.badge)
+            added = True
+
+        print(qs)
+        self.csr.execute(qs)
+        r = self.csr.fetchall()
+        l = []
+        for i in r:
+            l.append(Guest(i))
+        return l
+
 
     def add_guest(self, badge, first_name, last_name, company, email, phone):
         rslt = True

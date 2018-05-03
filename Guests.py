@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
+from Database import Guest
 
 class Guests:
     def __init__(self, root_window, database):
@@ -36,6 +37,7 @@ class Guests:
         tk.Button(self.win, text="Bewaar veranderingen", width=25, command=self.update_command).grid(row=0, column=5)
         tk.Button(self.win, text="Zoek gast", width=25, command=self.search_command).grid(row=1, column=5)
         tk.Button(self.win, text="Voeg gast toe", width=25, command=self.add_command).grid(row=2, column=5)
+        tk.Button(self.win, text="Wis velden", width=25, command=self.clear_inputfields_command).grid(row=3, column=5)
 
         #ROW 3
         tk.Label(self.win, text='{0:<20}{1:<20}{2:<20}{3:<40}{4:<10}{5:<10}'.format('Voornaam', 'Naam', 'Bedrijf', 'E-mail', 'Telefoon', 'Badge'), font='TkFixedFont'). \
@@ -84,18 +86,34 @@ class Guests:
         except IndexError:
             pass
 
-    def view_command(self):
+    def show_guest_list(self, list):
         self.list_lbx.delete(0, 'end')
-        guest_list = self.database.get_guests()
         self.idx_to_badge = []
-        for i in guest_list:
+        for i in list:
             print(i.first_name)
             self.list_lbx.insert('end', '{0:20.19}{1:20.19}{2:20.19}{3:40.39}{4:10.9}{5:10.9}'. \
                                  format(i.first_name, i.last_name, i.company, i.email, i.phone, i.badge))
             self.idx_to_badge.append(i.badge)
 
+    def view_command(self):
+        guest_list = self.database.get_guests()
+        self.show_guest_list(guest_list)
+
     def search_command(self):
-        pass
+        if self.first_name_txt.get():
+            print(self.first_name_txt.get())
+        else:
+            print('niks')
+        g = Guest()
+        g.first_name = self.first_name_txt.get()
+        g.last_name = self.last_name_txt.get()
+        g.company  = self.company_txt.get()
+        g.email = self.email_txt.get()
+        g.phone = self.phone_txt.get()
+        g.badge = self.badge_txt.get()
+        guest_list = self.database.find_guests(g)
+        self.show_guest_list(guest_list)
+
 
     def add_command(self):
         badge = self.badge_txt.get()
@@ -144,4 +162,13 @@ class Guests:
             else:
                 self.show_message('Gast niet gevonden, is de badge code juist?', color='red')
         self.view_command()
+
+    def clear_inputfields_command(self):
+        self.first_name_txt.set('')
+        self.last_name_txt.set('')
+        self.company_txt.set('')
+        self.email_txt.set('')
+        self.phone_txt.set('')
+        self.badge_txt.set('')
+
 
