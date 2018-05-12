@@ -3,6 +3,7 @@ import time
 from Database import FGR_DB
 from Register import Register
 from Guests import Guests
+import locale
 
 def write_slogan():
     print("Tkinter is easy to use!")
@@ -60,12 +61,11 @@ class FGR:
         if guest.found :
             direction = self.register.add_registration(guest)
             self.guest_welcome_lbl.config(text ="Hallo {}, u heb juist {} gebadged".format(guest.first_name, direction), fg="green")
-            root.after(2000, self.clear_guest_welcome)
+            root.after(4000, self.clear_guest_welcome)
         else:
             self.guest_welcome_lbl.config(text ="U bent nog niet geregistreerd, gelieve hulp te vragen", fg="red")
             root.after(5000, self.clear_guest_welcome)
         self.badge_ent.delete(0, tk.END)
-        root.after(1000, self.clear_guest_welcome)
 
     def update_time(self):
         self.time_lbl.configure(text=time.strftime('%d/%m/%Y %H:%M:%S'))
@@ -120,6 +120,7 @@ class FGR:
         tk.Label(self.root_frm, text = "", font=("Times New Roman", 30)).grid(columnspan=3, sticky='E')
 
 if __name__ == "__main__":
+    locale.setlocale(locale.LC_ALL, 'nl-BE')
     root = tk.Tk()
     fgr = FGR(root)
     root.mainloop()

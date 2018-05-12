@@ -2,14 +2,21 @@ import sqlite3
 import datetime
 
 class Guest:
+    SUB_TYPE_SUBSCRIPTION = 'subscription'
+    SUB_TYPE_PAYG = 'payasyougo'
+
     def __init__(self, db_row=None):
+
         if db_row is None:
             self.found = False
             return
         self.found = True
         self.first_name = db_row['first_name']
         self.last_name = db_row['last_name']
-        self.company = db_row['company']
+        self.subscription_type = db_row['subscription_type']
+        self.subscribed_from = db_row['subscribed_from']
+        self.pay_as_you_go_left = db_row['pay_as_you_go_left']
+        self.pay_as_you_go_max = db_row['pay_as_you_go_max']
         self.email = db_row['email']
         self.phone = db_row['phone']
         self.badge = db_row['badge']
@@ -37,17 +44,31 @@ class FGR_DB :
             print("Creating table {}: ".format(name), end='')
             self.csr.execute(ddl)
 
+    def date_iso2be(iso_date):
+        return '/'.join(iso_date.split('-')[::-1])
+
+    def date_be2iso(be_date):
+        month_dutch2number = {'januari' : 1, 'februari' : 2, 'maart' : 3, 'april' : 4,
+                              'mei' : 5, 'juni' : 6, 'juli' : 7, 'augustus' : 8, 'september' : 9,
+                              'october' : 10, 'november' : 11, 'december' : 12}
+        l = be_date.split(' ')[::-1]
+        l[1] = str(month_dutch2number[l[1]])
+        return '-'.join(l)
+
     DB_NAME = 'resources/fgr.db'
 
     TABLES = {}
     TABLES['guests'] = (
         "CREATE TABLE IF NOT EXISTS guests ("
+        "  badge TEXT PRIMARY KEY UNIQUE NOT NULL,"
         "  first_name TEXT,"
         "  last_name TEXT,"
-        "  company TEXT,"
         "  email TEXT,"
         "  phone TEXT,"
-        "  badge TEXT PRIMARY KEY UNIQUE NOT NULL"
+        "  subscription_type TEXT,"
+        "  subscribed_from DATE,"
+        "  pay_as_you_go_left INT,"
+        "  pay_as_you_go_max INT"
         ")")
 
     TABLES['registrations'] = (
@@ -60,18 +81,19 @@ class FGR_DB :
         ")")
 
     ADD_GUEST = ("INSERT INTO guests "
-                 "(first_name, last_name, company, email, phone, badge)"
-                 "VALUES (?, ?, ?, ?, ?, ?)")
+                 "(badge, first_name, last_name,  email, phone, subscription_type, subscribed_from, pay_as_you_go_left, pay_as_you_go_max)"
+                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
 
     UPDATE_GUEST = ("UPDATE guests SET "
                     "first_name=?,"
                     "last_name=?,"
-                    "company=?,"
                     "email=?,"
-                    "phone=?"
+                    "phone=?,"
+                    "subscription_type=?,"
+                    "subscribed_from=?,"
+                    "pay_as_you_go_left=?,"
+                    "pay_as_you_go_max=?"
                     "WHERE badge=?;")
-
-
 
 
     ADD_REGISTRATION =("INSERT INTO registrations "
@@ -80,8 +102,8 @@ class FGR_DB :
 
     def test_populate_database(self):
         guests = [
-            ('voornaam1', 'achternaam1', 'bedrijf1', 'email1@test.be', '0311111', '11'),
-            ('voornaam2', 'achternaam2', 'bedrijf2', 'email2@test.be', '0322222', '22'),
+            ('11', 'voornaam1', 'achternaam1', 'email1@test.be', '0311111', Guest.SUB_TYPE_SUBSCRIPTION, '2018-3-1', None, None),
+            ('22', 'voornaam2', 'achternaam2', 'email2@test.be', '0322222', Guest.SUB_TYPE_PAYG, None, 3, 10),
         ]
 
         registrations = [
@@ -122,12 +144,6 @@ class FGR_DB :
             qs += 'last_name LIKE \'%{}%\''.format(guest.last_name)
             added = True
 
-        if guest.company:
-            if added:
-                qs += ' AND '
-            qs += 'company LIKE \'%{}%\''.format(guest.company)
-            added = True
-
         if guest.email:
             if added:
                 qs += ' AND '
@@ -155,14 +171,14 @@ class FGR_DB :
         return l
 
 
-    def add_guest(self, badge, first_name, last_name, company, email, phone):
+    def add_guest(self, badge, first_name, last_name, email, phone, sub_type, subed_from, payg_left, payg_max):
         rslt = True
         try:
-            self.csr.execute(self.ADD_GUEST, (first_name, last_name, company, email, phone, badge))
+            self.csr.execute(self.ADD_GUEST, (badge, first_name, last_name, email, phone, sub_type, subed_from, payg_left, payg_max))
         except sqlite3.Error as e:
             rslt = False
         self.cnx.commit()
-        print("Guest added : {}, {}, {}, {}, {}, {}".format(first_name, last_name, company, email, phone, badge))
+        print("Guest added : {}, {}, {}, {}, {}, {}".format(first_name, last_name, email, phone, badge, sub_type))
         return rslt
 
 
@@ -175,10 +191,13 @@ class FGR_DB :
         return rslt
 
 
-    def update_guest(self, badge, first_name, last_name, company, email, phone):
+    def update_guest(self, badge, first_name, last_name, email, phone, sub_type, subed_from, payg_left, payg_max):
         rslt = True
         try:
-            self.csr.execute(self.UPDATE_GUEST,(first_name, last_name, company, email, phone, badge))
+               #self.csr.execute(self.UPDATE_GUEST,(first_name, last_name, email, phone, sub_type, datetime.datetime.strptime(subed_from, '%d %B %Y'),
+                #                                     payg_left, payg_max, badge))
+                self.csr.execute(self.UPDATE_GUEST, (first_name, last_name, email, phone, sub_type, FGR_DB.date_be2iso(subed_from),
+                                                        payg_left, payg_max, badge))
         except:
             rslt = False
         self.cnx.commit()
