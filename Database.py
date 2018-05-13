@@ -44,9 +44,6 @@ class FGR_DB :
             print("Creating table {}: ".format(name), end='')
             self.csr.execute(ddl)
 
-    def date_iso2be(iso_date):
-        return '/'.join(iso_date.split('-')[::-1])
-
     def date_be2iso(be_date):
         month_dutch2number = {'januari' : 1, 'februari' : 2, 'maart' : 3, 'april' : 4,
                               'mei' : 5, 'juni' : 6, 'juli' : 7, 'augustus' : 8, 'september' : 9,
@@ -54,6 +51,14 @@ class FGR_DB :
         l = be_date.split(' ')[::-1]
         l[1] = str(month_dutch2number[l[1]])
         return '-'.join(l)
+
+    def date_be_add_year(be_date, add_year):
+        try:
+            l = be_date.split(' ')
+            l[2] = str(int(l[2]) + add_year)
+            return ' '.join(l)
+        except:
+            return ''
 
     DB_NAME = 'resources/fgr.db'
 
@@ -194,9 +199,7 @@ class FGR_DB :
     def update_guest(self, badge, first_name, last_name, email, phone, sub_type, subed_from, payg_left, payg_max):
         rslt = True
         try:
-               #self.csr.execute(self.UPDATE_GUEST,(first_name, last_name, email, phone, sub_type, datetime.datetime.strptime(subed_from, '%d %B %Y'),
-                #                                     payg_left, payg_max, badge))
-                self.csr.execute(self.UPDATE_GUEST, (first_name, last_name, email, phone, sub_type, FGR_DB.date_be2iso(subed_from),
+            self.csr.execute(self.UPDATE_GUEST, (first_name, last_name, email, phone, sub_type, FGR_DB.date_be2iso(subed_from),
                                                         payg_left, payg_max, badge))
         except:
             rslt = False
@@ -222,7 +225,7 @@ class FGR_DB :
 
 
     #offset_from_last : 0 (last item), -1 (item before last item), ...
-    def find_registration_from_badge(self, badge_id, offset_from_last=0):
+    def find_single_registration_from_badge(self, badge_id, offset_from_last=0):
         if offset_from_last > 0:
             #registration not found
             return Registration()
@@ -238,6 +241,15 @@ class FGR_DB :
                 #out of range
                 registration = Registration()
         return registration
+
+
+    def find_registrations_from_badge(self, badge_id):
+        self.csr.execute('select * from registrations where badge_id=? order by time desc', (badge_id, ))
+        db_lst = self.csr.fetchall()
+        lst = []
+        for i in db_lst:
+            lst.append(Registration(i))
+        return lst
 
 
     def delete_registration(self, id):

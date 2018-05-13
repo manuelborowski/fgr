@@ -8,11 +8,10 @@ class Register:
         self.database = database
 
     def add_registration(self, guest):
-        print(guest.company)
         time = datetime.datetime.now()
         print(time.date())
-        registration_last = self.database.find_registration_from_badge(guest.badge)
-        registration_next_to_last = self.database.find_registration_from_badge(guest.badge, -1)
+        registration_last = self.database.find_single_registration_from_badge(guest.badge)
+        registration_next_to_last = self.database.find_single_registration_from_badge(guest.badge, -1)
         if not registration_last.found:
             #no registrations yet
             print('First registration')

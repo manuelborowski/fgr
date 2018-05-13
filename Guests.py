@@ -1,7 +1,8 @@
 import tkinter as tk
 from tkinter import messagebox
-from Database import Guest
+from Database import Guest, FGR_DB
 from Calendar import Datepicker
+
 
 class Guests:
     def __init__(self, root_window, database):
@@ -37,8 +38,8 @@ class Guests:
         self.sub[0].grid(row=2, column=0, sticky='w')
         self.sub_from_txt = tk.StringVar()
         self.sub.append(Datepicker(self.win, datevar = self.sub_from_txt, entrywidth=40, dateformat="%d %B %Y"))
-        #self.sub.append(tk.Entry(self.win, textvariable = self.sub_from_txt, width=40))
         self.sub[1].grid(row=2, column=1)
+        self.sub_from_txt.trace('w', self.sub_from_changed)
         self.sub.append(tk.Label(self.win, text="tot"))
         self.sub[2].grid(row=2, column=2)
         self.sub_till_txt = tk.StringVar()
@@ -82,16 +83,20 @@ class Guests:
         tk.Button(self.win, text="Bewaar veranderingen", width=25, command=self.update_command).grid(row=0, column=5)
         tk.Button(self.win, text="Zoek gast", width=25, command=self.search_command).grid(row=1, column=5)
         tk.Button(self.win, text="Voeg gast toe", width=25, command=self.add_command).grid(row=2, column=5)
-        tk.Button(self.win, text="Wis velden", width=25, command=self.clear_inputfields_command).grid(row=3, column=5)
-        tk.Button(self.win, text="Alle gasten", width=25, command=self.view_command).grid(row=4, column=5)
-        tk.Button(self.win, text="Verwijder geselecteerde gast", width=25, command=self.delete_command).grid(row=5, column=5)
-        tk.Button(self.win, text="Sluit venster", width=25, command=self.win.destroy).grid(row=6, column=5)
+        tk.Button(self.win, text="Verwijder geselecteerde gast", width=25, command=self.delete_command).grid(row=3, column=5)
+        tk.Button(self.win, text="Toon registraties", width=25, command=self.show_registrations).grid(row=4, column=5)
+        tk.Button(self.win, text="Wis velden", width=25, command=self.clear_inputfields_command).grid(row=5, column=5)
+        tk.Button(self.win, text="Alle gasten", width=25, command=self.view_command).grid(row=6, column=5)
+        tk.Button(self.win, text="Sluit venster", width=25, command=self.win.destroy).grid(row=7, column=5)
 
         #ROW ?? : extra row to make it better fit the window
         self.msg_lb = tk.Label(self.win, text = "")
         self.msg_lb.grid(sticky='e', columnspan=3)
 
         self.view_command()
+
+    def sub_from_changed(self, index, value, op):
+        self.sub_till_txt.set(FGR_DB.date_be_add_year(self.sub_from_txt.get(), 1))
 
     def show_message(self, msg, time=2000, color='black'):
         def clear_msg():
@@ -117,11 +122,18 @@ class Guests:
                 self.select_subscription_type(guest.subscription_type)
                 if guest.subscription_type == Guest.SUB_TYPE_SUBSCRIPTION:
                     self.sub_from_txt.set(guest.subscribed_from.strftime('%d %B %Y'))
+                    self.sub_till_txt.set(FGR_DB.date_be_add_year(self.sub_from_txt.get(), 1))
                 else:
                     self.payg_left_txt.set(guest.pay_as_you_go_left)
                     self.payg_max_txt.set(guest.pay_as_you_go_max)
         except IndexError:
             pass
+
+    def show_registrations(self):
+        l  = self.database.find_registrations_from_badge(self.badge_txt.get())
+        for i in l:
+            print(i.time)
+        pass
 
     def show_guest_list(self, list):
         self.list_lbx.delete(0, 'end')
