@@ -31,6 +31,9 @@ class Registration:
         self.time_in = db_row['time_in']
         self.time_out = db_row['time_out']
         self.badge_id = db_row['badge_id']
+        if 'first_name' in db_row.keys():
+            self.guest = Guest(db_row)
+
 
 class FGR_DB :
     def __init__(self):
@@ -254,8 +257,24 @@ class FGR_DB :
         return registration
 
 
+    def find_all_registrations_and_guests(self):
+        self.csr.execute('select * from registrations join guests on registrations.badge_id = guests.badge order by time_in desc')
+        db_lst = self.csr.fetchall()
+        lst = []
+        for i in db_lst:
+            lst.append(Registration(i))
+        return lst
+
+
+    def find_all_registrations(self):
+        return self.find_registrations_from_badge(-1)
+
+    #badge_is < 0 : find all registrations
     def find_registrations_from_badge(self, badge_id):
-        self.csr.execute('select * from registrations where badge_id=? order by time_in desc', (badge_id, ))
+        if badge_id < 0:
+            self.csr.execute('select * from registrations order by time_in desc')
+        else:
+            self.csr.execute('select * from registrations where badge_id=? order by time_in desc', (badge_id, ))
         db_lst = self.csr.fetchall()
         lst = []
         for i in db_lst:

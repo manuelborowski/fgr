@@ -3,6 +3,7 @@ import time
 from Database import FGR_DB
 from Register import Register
 from Guests import Guests
+from Registrations import Registrations
 import locale
 
 def write_slogan():
@@ -24,6 +25,9 @@ class FGR:
 
         #initialize Guests
         self.guests = Guests(root, self.database)
+
+        #initialize Registrations
+        self.registrations = Registrations(root, self.database)
 
         #initialize GUI
         self.root=root
@@ -83,7 +87,7 @@ class FGR:
         self.menu_mnu=tk.Menu()
         self.main_mnu.add_cascade(label="Menu", menu=self.menu_mnu)
         self.menu_mnu.add_command(label="Gasten", command=self.guests.show_guests_window)
-        self.menu_mnu.add_command(label="Registraties", command=self.add_guest)
+        self.menu_mnu.add_command(label="Registraties", command=self.registrations.show_registrations_window)
         self.menu_mnu.add_command(label="Instellingen", command=self.add_guest)
         self.menu_mnu.add_command(label="Exporteer", command=self.add_guest)
         self.menu_mnu.add_command(label="Wis", command=self.clear_database)

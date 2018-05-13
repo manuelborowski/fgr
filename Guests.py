@@ -3,7 +3,7 @@ from tkinter import messagebox
 from Database import Guest, FGR_DB
 from Calendar import Datepicker
 
-class Registrations:
+class Show_registrations:
     def __init__(self, root_window, database):
         self.root_window = root_window
         self.database = database
@@ -59,7 +59,7 @@ class Guests:
     def __init__(self, root_window, database):
         self.root_window = root_window
         self.database = database
-        self.registrations_window = Registrations(root_window, database)
+        self.registrations_window = Show_registrations(root_window, database)
 
     def show_guests_window(self):
         # beep and show a screen to chose between IN or OUT
