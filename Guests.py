@@ -3,11 +3,63 @@ from tkinter import messagebox
 from Database import Guest, FGR_DB
 from Calendar import Datepicker
 
+class Registrations:
+    def __init__(self, root_window, database):
+        self.root_window = root_window
+        self.database = database
+
+    def show_registrations_window(self, badge):
+        self.win = tk.Toplevel()
+        self.win.wm_title('Registraties')
+
+        guest = self.database.find_guest_from_badge(badge)
+        if guest.found:
+            t = 'Registraties voor : {} {}'.format(guest.first_name, guest.last_name)
+        else:
+            t = 'Gast niet gevonden, probeer opnieuw'
+        #Row 0
+        tk.Label(self.win, text=t).grid(row=0, column=0, columnspan=4, sticky='w'
+                                                                              '')
+        #Row 1
+        tk.Label(self.win, text='{0:<15}{1:<10}{2:<10}'.format('Datum', 'IN', 'UIT'), font='TkFixedFont'). \
+                grid(row=1, column=0, columnspan=4, sticky='w')
+
+        #ROW 2
+        self.list_lbx = tk.Listbox(self.win, height=30, width=35, font='TkFixedFont')
+        self.list_lbx.grid(row=2, column=0, rowspan=30, columnspan=4)
+        #self.list_lbx.bind('<<ListboxSelect>>', self.get_selected_row)
+        sb1_sb = tk.Scrollbar(self.win)
+        sb1_sb.grid(row=2, column=4, rowspan=30)
+        self.list_lbx.config(yscrollcommand=sb1_sb.set)
+        sb1_sb.config(command=self.list_lbx.yview)
+
+        #Row 0
+        tk.Button(self.win, text="Sluit venster", width=25, command=self.win.destroy).grid(row=1, column=5)
+
+        l  = self.database.find_registrations_from_badge(badge)
+        self.show_registrations_list(l)
+
+    def show_registrations_list(self, list):
+        ic = 0
+        self.list_lbx.delete(0, 'end')
+        for i in list:
+            date = i.time_in.strftime('%d/%m/%Y')
+            time_in = i.time_in.strftime('%H:%M')
+            if i.time_out is not None:
+                time_out = i.time_out.strftime('%H:%M')
+            else:
+                time_out='-'
+            self.list_lbx.insert('end', '{0:15.14}{1:10.9}{2:10.9}'.format(date, time_in, time_out))
+            if i.time_out is None:
+                self.list_lbx.itemconfig(ic, bg='orange')
+            ic += 1
+
 
 class Guests:
     def __init__(self, root_window, database):
         self.root_window = root_window
         self.database = database
+        self.registrations_window = Registrations(root_window, database)
 
     def show_guests_window(self):
         # beep and show a screen to chose between IN or OUT
@@ -84,7 +136,7 @@ class Guests:
         tk.Button(self.win, text="Zoek gast", width=25, command=self.search_command).grid(row=1, column=5)
         tk.Button(self.win, text="Voeg gast toe", width=25, command=self.add_command).grid(row=2, column=5)
         tk.Button(self.win, text="Verwijder geselecteerde gast", width=25, command=self.delete_command).grid(row=3, column=5)
-        tk.Button(self.win, text="Toon registraties", width=25, command=self.show_registrations).grid(row=4, column=5)
+        tk.Button(self.win, text="Toon registraties", width=25, command=self.show_registrations_list).grid(row=4, column=5)
         tk.Button(self.win, text="Wis velden", width=25, command=self.clear_inputfields_command).grid(row=5, column=5)
         tk.Button(self.win, text="Alle gasten", width=25, command=self.view_command).grid(row=6, column=5)
         tk.Button(self.win, text="Sluit venster", width=25, command=self.win.destroy).grid(row=7, column=5)
@@ -129,11 +181,11 @@ class Guests:
         except IndexError:
             pass
 
-    def show_registrations(self):
+    def show_registrations_list(self):
         l  = self.database.find_registrations_from_badge(self.badge_txt.get())
         for i in l:
-            print(i.time)
-        pass
+            print(i.time_in, i.time_out)
+        self.registrations_window.show_registrations_window(self.badge_txt.get())
 
     def show_guest_list(self, list):
         self.list_lbx.delete(0, 'end')

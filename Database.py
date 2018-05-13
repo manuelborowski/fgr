@@ -28,9 +28,8 @@ class Registration:
             return
         self.found = True
         self.id = db_row['id']
-        self.time = db_row['time']
-        self.direction = db_row['direction']
-        self.auto_added = db_row['auto_added']
+        self.time_in = db_row['time_in']
+        self.time_out = db_row['time_out']
         self.badge_id = db_row['badge_id']
 
 class FGR_DB :
@@ -79,9 +78,8 @@ class FGR_DB :
     TABLES['registrations'] = (
         "CREATE TABLE IF NOT EXISTS registrations ("
         "  id integer PRIMARY KEY,"
-        "  'time' timestamp,"
-        "  direction TEXT,"
-        "  auto_added BOOL,"
+        "  'time_in' timestamp,"
+        "  'time_out' timestamp,"
         "  badge_id TEXT NOT NULL REFERENCES guests (badge) ON DELETE CASCADE"
         ")")
 
@@ -102,8 +100,14 @@ class FGR_DB :
 
 
     ADD_REGISTRATION =("INSERT INTO registrations "
-                 "(time, direction, auto_added, badge_id)"
-                 "VALUES (?, ?, ?, ?)")
+                 "(time_in, time_out, badge_id)"
+                 "VALUES (?, ?, ?)")
+
+    UPDATE_REGISTRATION = ("UPDATE registrations SET "
+                        "time_in=?, "
+                        "time_out=?, "
+                        "badge_id=? "
+                        "WHERE id=?;")
 
     def test_populate_database(self):
         guests = [
@@ -112,17 +116,14 @@ class FGR_DB :
         ]
 
         registrations = [
-            ['18/2/2018 15:08:13', ('IN', 'F', '11')],
-            ['18/2/2018 20:00:00', ('UIT', 'T', '11')],
-            ['18/2/2018 15:01:13', ('IN', 'F', '22')],
-            ['18/2/2018 19:59:13', ('UIT', 'F', '22')],
+            ('2018-03-02 16:08:13', '2018-03-02 21:09:13', '11'),
+            ('2018-03-05 16:10:16', '2018-03-05 21:09:13', '22'),
         ]
         for i in guests:
             self.csr.execute(self.ADD_GUEST, i)
 
         for i in registrations:
-            d = datetime.datetime.strptime(i[0], '%d/%m/%Y %H:%M:%S')
-            self.csr.execute(self.ADD_REGISTRATION, (d,)+i[1])
+            self.csr.execute(self.ADD_REGISTRATION, i)
 
         print('Database populated')
         self.cnx.commit()
@@ -215,13 +216,23 @@ class FGR_DB :
             l.append(Guest(i))
         return l
 
-    def add_registration(self, badge_id, time, direction, auto_added=False):
+    def add_registration(self, badge_id, time_in):
         try:
-            self.csr.execute(self.ADD_REGISTRATION, (time, direction, auto_added, badge_id))
+            self.csr.execute(self.ADD_REGISTRATION, (time_in, None, badge_id))
         except sqlite3.Error as e:
             pass
         self.cnx.commit()
-        print("Registration added : {}, {}, {}, {}".format(badge_id, time, direction, auto_added))
+        print("Registration added : {}, {}".format(badge_id, time_in))
+
+    def update_registration(self, id, badge_id, time_in, time_out):
+        rslt = True
+        try:
+            self.csr.execute(self.UPDATE_REGISTRATION, (time_in, time_out, badge_id, id))
+        except:
+            rslt = False
+        self.cnx.commit()
+        return rslt
+
 
 
     #offset_from_last : 0 (last item), -1 (item before last item), ...
@@ -229,7 +240,7 @@ class FGR_DB :
         if offset_from_last > 0:
             #registration not found
             return Registration()
-        self.csr.execute('select * from registrations where badge_id=? order by time desc', (badge_id, ))
+        self.csr.execute('select * from registrations where badge_id=? order by time_in desc', (badge_id, ))
         lst = self.csr.fetchmany(1 - offset_from_last)
         if not lst:
             #empty list, nothing found
@@ -244,7 +255,7 @@ class FGR_DB :
 
 
     def find_registrations_from_badge(self, badge_id):
-        self.csr.execute('select * from registrations where badge_id=? order by time desc', (badge_id, ))
+        self.csr.execute('select * from registrations where badge_id=? order by time_in desc', (badge_id, ))
         db_lst = self.csr.fetchall()
         lst = []
         for i in db_lst:

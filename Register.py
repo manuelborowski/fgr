@@ -8,15 +8,30 @@ class Register:
         self.database = database
 
     def add_registration(self, guest):
-        time = datetime.datetime.now()
-        print(time.date())
+        now = datetime.datetime.now()
+        print(now.date())
         registration_last = self.database.find_single_registration_from_badge(guest.badge)
+        direction = 'IN'
+        if not registration_last.found:
+            #no registrations yet
+            print('First registration')
+            self.database.add_registration(guest.badge, now)
+        elif registration_last.time_in.date() == now.date():
+            print('Registering OUT')
+            self.database.update_registration(registration_last.id, guest.badge, registration_last.time_in, now)
+            direction = 'UIT'
+        else:
+            print('Registering IN')
+            self.database.add_registration(guest.badge, now)
+        return direction
+
+
         registration_next_to_last = self.database.find_single_registration_from_badge(guest.badge, -1)
         if not registration_last.found:
             #no registrations yet
             print('First registration')
             direction = 'IN'
-        elif registration_last.time.date() == time.date():
+        elif registration_last.time.date() == now.date():
             #current date is the same as the previous date, hence badge OUT
             direction = 'UIT'
             if registration_last.direction=='IN':
@@ -39,7 +54,7 @@ class Register:
             print('Registration of previous visit was not correct')
             self.database.add_registration(guest.badge, registration_last.time, 'IN', True)
             direction = 'IN'
-        self.database.add_registration(guest.badge, time, direction, False)
+        self.database.add_registration(guest.badge, now, direction, False)
 
 
         return direction

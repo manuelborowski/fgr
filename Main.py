@@ -17,7 +17,7 @@ class FGR:
 
         #initialize database
         self.database = FGR_DB()
-        #self.database.test_populate_database()
+        #{self.database.test_populate_database()
 
         #initialize register
         self.register = Register(root, self.database)
