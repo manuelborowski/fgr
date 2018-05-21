@@ -26,39 +26,6 @@ class Register:
         return direction
 
 
-        registration_next_to_last = self.database.find_single_registration_from_badge(guest.badge, -1)
-        if not registration_last.found:
-            #no registrations yet
-            print('First registration')
-            direction = 'IN'
-        elif registration_last.time.date() == now.date():
-            #current date is the same as the previous date, hence badge OUT
-            direction = 'UIT'
-            if registration_last.direction=='IN':
-                print('Second registration on current day')
-            else:
-                print('Third registration this day, remove the last one and a new one')
-                self.database.delete_registration(registration_last.id)
-        elif registration_next_to_last.found:
-            if registration_last.time.date() == registration_next_to_last.time.date():
-                #previous two registrations have the same date, hence badge IN
-                print('First registration on current day')
-                direction = 'IN'
-            else:
-                #error : registration of previous visit was not correct, add one to correct
-                print('Registration of previous visit was not correct')
-                direction = 'IN'
-                self.database.add_registration(guest.badge, registration_last.time, 'IN', True)
-        else:
-            # error : registration of previous visit was not correct, add one to correct
-            print('Registration of previous visit was not correct')
-            self.database.add_registration(guest.badge, registration_last.time, 'IN', True)
-            direction = 'IN'
-        self.database.add_registration(guest.badge, now, direction, False)
-
-
-        return direction
-
         #NOT USED : displayed a window with IN and OUT arrow that needed to be pushed
         def button_in_pushed():
             self.database.add_registration(guest.badge, 'IN', False)
