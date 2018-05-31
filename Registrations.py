@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import messagebox
 import datetime
 from Database import FGR_DB
 from Calendar import Datepicker
@@ -64,7 +65,7 @@ class Registrations:
         self.show_registrations_list()
 
     def show_registrations_list(self):
-        l = self.database.find_all_registrations_and_guests()
+        l = self.database.get_registrations_and_guests()
         ic = 0
         self.idx_to_badge=[]
         self.list_lbx.delete(0, 'end')
@@ -128,6 +129,26 @@ class Registrations:
         else:
             self.show_message('Registratie niet gevonden, onbekende reden', color='red')
         self.show_registrations_list()
+
+    def delete_command(self):
+        rslt = messagebox.askyesno('Verwijder registratie', 'Wilt u verder gaan?')
+        if rslt == False:
+            self.show_message('Geannuleerd', color='green')
+        else:
+            badge = self.badge_txt.get()
+            guest = self.database.find_guest_from_badge(badge)
+            if guest.found:
+                rslt = self.database.delete_registration(self.registration_id)
+
+
+                rslt = self.database.delete_guest(badge)
+                if rslt:
+                    self.show_message('Gast is verwijderd', color='green')
+                else:
+                    self.show_message('Kon de gast niet verwijderen, onbekende reden', color='red')
+            else:
+                self.show_message('Gast niet gevonden, is de badge code juist?', color='red')
+        self.view_command()
 
 
     def clear_inputfields_command(self):

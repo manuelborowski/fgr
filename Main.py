@@ -3,8 +3,10 @@ import time
 from Database import FGR_DB
 from Register import Register
 from Guests import Guests
-from Registrations import Registrations
+#from Registrations import Registrations
 import locale
+
+VERSION = 'V1.0'
 
 def write_slogan():
     print("Tkinter is easy to use!")
@@ -13,6 +15,7 @@ class FGR:
     class Mode:
         guest = 'GEBRUIKER'
         admin = 'BEHEERDER'
+
 
     def __init__(self, root=None):
 
@@ -27,7 +30,7 @@ class FGR:
         self.guests = Guests(root, self.database)
 
         #initialize Registrations
-        self.registrations = Registrations(root, self.database)
+        #TODO self.registrations = Registrations(root, self.database)
 
         #initialize GUI
         self.root=root
@@ -46,13 +49,15 @@ class FGR:
             self.mode = self.Mode.admin
             #change mode to admin
             self.main_mnu.entryconfig('Menu', state='normal')
-            self.mode_btn.configure(text='Gast')
+            #self.mode_btn.configure(text='Gast')
+            self.root_frm.winfo_toplevel().title("Fablab Gebruikers Registratie {} :: ADMIN MODE".format(VERSION))
 
         else:
             self.mode = self.Mode.guest
             #change mode to guest
             self.main_mnu.entryconfig('Menu', state='disabled')
-            self.mode_btn.configure(text='Beheerder')
+            #self.mode_btn.configure(text='Beheerder')
+            self.root_frm.winfo_toplevel().title("Fablab Gebruikers Registratie {}".format(VERSION))
         #set focus to the badge entry
         self.badge_ent.focus()
 
@@ -61,14 +66,18 @@ class FGR:
 
     def badge_entered(self, event):
         #self.guest_lbl.text = ""
-        guest = self.database.find_guest_from_badge(self.badge_ent.get())
-        if guest.found :
-            direction = self.register.add_registration(guest)
-            self.guest_welcome_lbl.config(text ="Hallo {}, u heb juist {} gebadged".format(guest.first_name, direction), fg="green")
-            root.after(4000, self.clear_guest_welcome)
+        #check if the admin code is used.  If so, switch to admin mode
+        if self.badge_ent.get() == '2500':
+            self.change_mode()
         else:
-            self.guest_welcome_lbl.config(text ="U bent nog niet geregistreerd, gelieve hulp te vragen", fg="red")
-            root.after(5000, self.clear_guest_welcome)
+            guest = self.database.find_guest_from_badge(self.badge_ent.get())
+            if guest.found :
+                direction = self.register.add_registration(guest)
+                self.guest_welcome_lbl.config(text ="Hallo {}, u heb juist {} gebadged".format(guest.first_name, direction), fg="green")
+                root.after(4000, self.clear_guest_welcome)
+            else:
+                self.guest_welcome_lbl.config(text ="U bent nog niet geregistreerd, gelieve hulp te vragen", fg="red")
+                root.after(5000, self.clear_guest_welcome)
         self.badge_ent.delete(0, tk.END)
 
     def update_time(self):
@@ -87,21 +96,22 @@ class FGR:
         self.menu_mnu=tk.Menu()
         self.main_mnu.add_cascade(label="Menu", menu=self.menu_mnu)
         self.menu_mnu.add_command(label="Gasten", command=self.guests.show_guests_window)
-        self.menu_mnu.add_command(label="Registraties", command=self.registrations.show_registrations_window)
-        self.menu_mnu.add_command(label="Instellingen", command=self.add_guest)
-        self.menu_mnu.add_command(label="Exporteer", command=self.add_guest)
-        self.menu_mnu.add_command(label="Wis", command=self.clear_database)
+        #TODO self.menu_mnu.add_command(label="Registraties", command=self.registrations.show_registrations_window)
+        #self.menu_mnu.add_command(label="Instellingen", command=self.add_guest)
+        #self.menu_mnu.add_command(label="Exporteer", command=self.add_guest)
+        self.menu_mnu.add_command(label="Gast mode", command=self.change_mode)
+        #self.menu_mnu.add_command(label="Wis", command=self.clear_database)
 
         self.root.configure(menu=self.main_mnu)
 
     def init_widgets(self):
         self.fr1_frm = tk.Frame(self.root_frm)
         self.fr1_frm.grid(row=0, column=0, sticky='W')
-        tk.Label(self.fr1_frm, text='paswoord').grid(row=0, column=0)
-        self.pwd_ent = tk.Entry(self.fr1_frm, show='*')
-        self.pwd_ent.grid(row=0, column=1)
-        self.mode_btn = tk.Button(self.fr1_frm, text='Beheerder', command=self.change_mode)
-        self.mode_btn.grid(row=0, column=2)
+        #tk.Label(self.fr1_frm, text='paswoord').grid(row=0, column=0)
+        #self.pwd_ent = tk.Entry(self.fr1_frm, show='*')
+        #self.pwd_ent.grid(row=0, column=1)
+        #self.mode_btn = tk.Button(self.fr1_frm, text='Beheerder', command=self.change_mode)
+        #self.mode_btn.grid(row=0, column=2)
 
         tk.Label(self.root_frm, text = "Welkom bij het fablab\nGelieve uw badge aan te bieden", font=("Times New Roman", 60)).grid(row=1, columnspan=3)
 
@@ -114,7 +124,7 @@ class FGR:
         self.fr2_frm = tk.Frame(self.root_frm)
         self.fr2_frm.grid(columnspan=3, sticky='W')
         tk.Label(self.fr2_frm, text = "BADGE", font=("Times New Roman", 30)).pack(side='left')
-        self.badge_ent = tk.Entry(self.fr2_frm, font=("Times New Roman", 30))
+        self.badge_ent = tk.Entry(self.fr2_frm, show='*', font=("Times New Roman", 30))
         self.badge_ent.pack(side='left')
         self.badge_ent.bind('<Return>', self.badge_entered)
 

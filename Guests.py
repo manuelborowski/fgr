@@ -8,11 +8,11 @@ class Show_registrations:
         self.root_window = root_window
         self.database = database
 
-    def show_registrations_window(self, badge):
+    def show_registrations_window(self, id):
         self.win = tk.Toplevel()
         self.win.wm_title('Registraties')
 
-        guest = self.database.find_guest_from_badge(badge)
+        guest = self.database.find_guest(id)
         if guest.found:
             t = 'Registraties voor : {} {}'.format(guest.first_name, guest.last_name)
         else:
@@ -36,7 +36,7 @@ class Show_registrations:
         #Row 0
         tk.Button(self.win, text="Sluit venster", width=25, command=self.win.destroy).grid(row=1, column=5)
 
-        l  = self.database.find_registrations_from_badge(badge)
+        l  = self.database.find_registrations(id)
         self.show_registrations_list(l)
 
     def show_registrations_list(self, list):
@@ -113,9 +113,12 @@ class Guests:
         self.payg[3].grid(row=3, column=3)
 
         #Row 4
-        tk.Label(self.win, text="Badge").grid(row=4, column=0)
-        self.badge_txt = tk.StringVar()
-        tk.Entry(self.win, textvariable = self.badge_txt, width=40).grid(row=4, column=1)
+        tk.Label(self.win, text="Badge-code").grid(row=4, column=0)
+        self.badge_code_txt = tk.StringVar()
+        tk.Entry(self.win, textvariable = self.badge_code_txt, width=40).grid(row=4, column=1)
+        tk.Label(self.win, text="Badge-nummer").grid(row=4, column=2)
+        self.badge_number_txt = tk.StringVar()
+        tk.Entry(self.win, textvariable = self.badge_number_txt, width=40).grid(row=4, column=3)
 
 
         #Row 5
@@ -138,14 +141,14 @@ class Guests:
         tk.Button(self.win, text="Verwijder geselecteerde gast", width=25, command=self.delete_command).grid(row=3, column=5)
         tk.Button(self.win, text="Toon registraties", width=25, command=self.show_registrations_list).grid(row=4, column=5)
         tk.Button(self.win, text="Wis velden", width=25, command=self.clear_inputfields_command).grid(row=5, column=5)
-        tk.Button(self.win, text="Alle gasten", width=25, command=self.view_command).grid(row=6, column=5)
+        tk.Button(self.win, text="Alle gasten", width=25, command=self.show_guest_list).grid(row=6, column=5)
         tk.Button(self.win, text="Sluit venster", width=25, command=self.win.destroy).grid(row=7, column=5)
 
         #ROW ?? : extra row to make it better fit the window
         self.msg_lb = tk.Label(self.win, text = "")
         self.msg_lb.grid(sticky='e', columnspan=3)
 
-        self.view_command()
+        self.show_guest_list()
 
     def sub_from_changed(self, index, value, op):
         self.sub_till_txt.set(FGR_DB.date_be_add_year(self.sub_from_txt.get(), 1))
@@ -160,12 +163,14 @@ class Guests:
     def get_selected_row(self, event):
         try:
             idx = self.list_lbx.curselection()[0]
-            print(idx, self.idx_to_badge[idx])
-            guest = self.database.find_guest_from_badge(self.idx_to_badge[idx])
+            print(idx, self.idx_to_id[idx])
+            guest = self.database.find_guest(self.idx_to_id[idx])
             self.clear_inputfields_command()
             if guest.found:
                 print(guest.first_name)
-                self.badge_txt.set(guest.badge)
+                self.guest_id = guest.id
+                self.badge_code_txt.set(guest.badge_code)
+                self.badge_number_txt.set(guest.badge_number)
                 self.first_name_txt.set(guest.first_name)
                 self.last_name_txt.set(guest.last_name)
                 self.email_txt.set(guest.email)
@@ -182,23 +187,18 @@ class Guests:
             pass
 
     def show_registrations_list(self):
-        l  = self.database.find_registrations_from_badge(self.badge_txt.get())
-        for i in l:
-            print(i.time_in, i.time_out)
-        self.registrations_window.show_registrations_window(self.badge_txt.get())
+        self.registrations_window.show_registrations_window(self.guest_id)
 
-    def show_guest_list(self, list):
+    def show_guest_list(self, list=None):
+        if not list:
+            list = self.database.get_guests()
         self.list_lbx.delete(0, 'end')
-        self.idx_to_badge = []
+        self.idx_to_id = []
         for i in list:
             print(i.first_name)
             self.list_lbx.insert('end', '{0:20.19}{1:20.19}{2:40.39}{3:10.9}{4:10.9}'. \
-                                 format(i.first_name, i.last_name, i.email, i.phone, i.badge))
-            self.idx_to_badge.append(i.badge)
-
-    def view_command(self):
-        guest_list = self.database.get_guests()
-        self.show_guest_list(guest_list)
+                                 format(i.first_name, i.last_name, i.email, i.phone, i.badge_number))
+            self.idx_to_id.append(i.id)
 
     def search_command(self):
         if self.first_name_txt.get():
@@ -210,32 +210,31 @@ class Guests:
         g.last_name = self.last_name_txt.get()
         g.email = self.email_txt.get()
         g.phone = self.phone_txt.get()
-        g.badge = self.badge_txt.get()
+        g.badge_code = self.badge_code_txt.get()
         guest_list = self.database.find_guests(g)
         self.show_guest_list(guest_list)
 
 
     def add_command(self):
-        badge = self.badge_txt.get()
-        guest = self.database.find_guest_from_badge(badge)
+        badge_code = self.badge_code_txt.get()
+        guest = self.database.find_guest_from_badge(badge_code)
         if guest.found:
             self.show_message('Opgepast, een gast met die badge bestaat al', color='red')
         else:
-            rslt = self.database.add_guest(badge, self.first_name_txt.get(), self.last_name_txt.get(),
+            rslt = self.database.add_guest(badge_code, self.badge_number_txt.get(), self.first_name_txt.get(), self.last_name_txt.get(),
                                            self.email_txt.get(), self.phone_txt.get(), self.sub_type_txt.get(),
                                            self.sub_from_txt.get(), self.payg_left_txt.get(), self.payg_max_txt.get())
             if rslt:
                 self.show_message('Gast is toegevoegd', color='green')
             else:
                 self.show_message('Kon de gast niet toevoegen, onbekende reden', color='red')
-        self.view_command()
+        self.show_guest_list()
 
 
     def update_command(self):
-        badge = self.badge_txt.get()
-        guest = self.database.find_guest_from_badge(badge)
+        guest = self.database.find_guest(self.guest_id)
         if guest.found:
-            rslt = self.database.update_guest(badge, self.first_name_txt.get(), self.last_name_txt.get(),
+            rslt = self.database.update_guest(self.guest_id, self.badge_code_txt.get(), self.badge_number_txt.get(), self.first_name_txt.get(), self.last_name_txt.get(),
                                               self.email_txt.get(), self.phone_txt.get(), self.sub_type_txt.get(),
                                               FGR_DB.date_be2iso(self.sub_from_txt.get()), self.payg_left_txt.get(), self.payg_max_txt.get())
             if rslt:
@@ -244,33 +243,32 @@ class Guests:
                 self.show_message('Kon de gegevens niet aanpassen, onbekende reden', color='red')
         else:
             self.show_message('Gast niet gevonden, is de badge code juist?', color='red')
-        self.view_command()
+        self.show_guest_list()
 
     def delete_command(self):
         rslt = messagebox.askyesno('Verwijder gast', 'Als u de gast verwijderd, dan worden alle registraties van die gast ook verwijderd!' \
                                    '\n\nWilt u verder gaan?')
-        self
         if rslt == False:
             self.show_message('Geannuleerd', color='green')
         else:
-            badge = self.badge_txt.get()
-            guest = self.database.find_guest_from_badge(badge)
+            guest = self.database.find_guest(self.guest_id)
             if guest.found:
-                rslt = self.database.delete_guest(badge)
+                rslt = self.database.delete_guest(self.guest_id)
                 if rslt:
                     self.show_message('Gast is verwijderd', color='green')
                 else:
                     self.show_message('Kon de gast niet verwijderen, onbekende reden', color='red')
             else:
                 self.show_message('Gast niet gevonden, is de badge code juist?', color='red')
-        self.view_command()
+        self.show_guest_list()
 
     def clear_inputfields_command(self):
         self.first_name_txt.set('')
         self.last_name_txt.set('')
         self.email_txt.set('')
         self.phone_txt.set('')
-        self.badge_txt.set('')
+        self.badge_code_txt.set('')
+        self.badge_number_txt.set('')
         self.sub_from_txt.set('')
         self.sub_till_txt.set('')
         self.payg_max_txt.set('')
