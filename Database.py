@@ -17,7 +17,9 @@ class Guest:
         self.subscription_type = db_row['subscription_type']
         self.subscribed_from = db_row['subscribed_from']
         self.pay_as_you_go_left = db_row['pay_as_you_go_left']
+        if not self.pay_as_you_go_left: self.pay_as_you_go_left=''
         self.pay_as_you_go_max = db_row['pay_as_you_go_max']
+        if not self.pay_as_you_go_max: self.pay_as_you_go_max=''
         self.email = db_row['email']
         self.phone = db_row['phone']
         self.badge_code = db_row['badge_code']
@@ -224,6 +226,7 @@ class FGR_DB :
             self.csr.execute('DELETE FROM guests WHERE id=?',(id, ))
         except sqlite3.Error as e:
             rslt = False
+        self.cnx.commit()
         return rslt
 
 

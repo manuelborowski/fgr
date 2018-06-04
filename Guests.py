@@ -56,13 +56,14 @@ class Show_registrations:
 
 
 class Guests:
-    def __init__(self, root_window, database):
+    def __init__(self, root_window, database, close_cb):
         self.root_window = root_window
         self.database = database
+        self.close_cb = close_cb
         self.registrations_window = Show_registrations(root_window, database)
 
+
     def show_guests_window(self):
-        # beep and show a screen to chose between IN or OUT
         self.win = tk.Toplevel()
         self.win.wm_title("Gasten")
 
@@ -135,20 +136,24 @@ class Guests:
         sb1_sb.config(command=self.list_lbx.yview)
 
         #Row 0-6, Column 5
-        tk.Button(self.win, text="Bewaar veranderingen", width=25, command=self.update_command).grid(row=0, column=5)
-        tk.Button(self.win, text="Zoek gast", width=25, command=self.search_command).grid(row=1, column=5)
-        tk.Button(self.win, text="Voeg gast toe", width=25, command=self.add_command).grid(row=2, column=5)
-        tk.Button(self.win, text="Verwijder geselecteerde gast", width=25, command=self.delete_command).grid(row=3, column=5)
-        tk.Button(self.win, text="Toon registraties", width=25, command=self.show_registrations_list).grid(row=4, column=5)
-        tk.Button(self.win, text="Wis velden", width=25, command=self.clear_inputfields_command).grid(row=5, column=5)
-        tk.Button(self.win, text="Alle gasten", width=25, command=self.show_guest_list).grid(row=6, column=5)
-        tk.Button(self.win, text="Sluit venster", width=25, command=self.win.destroy).grid(row=7, column=5)
+        tk.Button(self.win, text="Zoek gast", width=25, command=self.search_guest_command).grid(row=0, column=5)
+        tk.Button(self.win, text="Voeg gast toe", width=25, command=self.add_guest_command).grid(row=2, column=5)
+        tk.Button(self.win, text="Bewaar veranderingen", width=25, command=self.update_guest_command).grid(row=3, column=5)
+        tk.Button(self.win, text="Verwijder geselecteerde gast", width=25, command=self.delete_guest_command).grid(row=4, column=5)
+        tk.Button(self.win, text="Toon registraties", width=25, command=self.show_registrations_list_command).grid(row=6, column=5)
+        tk.Button(self.win, text="Wis velden", width=25, command=self.clear_inputfields_command).grid(row=8, column=5)
+        tk.Button(self.win, text="Alle gasten", width=25, command=self.show_guest_list_command).grid(row=10, column=5)
+        tk.Button(self.win, text="Sluit venster", width=25, command=self.close_window_command).grid(row=12, column=5)
 
         #ROW ?? : extra row to make it better fit the window
         self.msg_lb = tk.Label(self.win, text = "")
         self.msg_lb.grid(sticky='e', columnspan=3)
 
-        self.show_guest_list()
+        self.show_guest_list_command()
+
+    def close_window_command(self):
+        self.close_cb()
+        self.win.destroy()
 
     def sub_from_changed(self, index, value, op):
         self.sub_till_txt.set(FGR_DB.date_be_add_year(self.sub_from_txt.get(), 1))
@@ -186,10 +191,10 @@ class Guests:
         except IndexError:
             pass
 
-    def show_registrations_list(self):
+    def show_registrations_list_command(self):
         self.registrations_window.show_registrations_window(self.guest_id)
 
-    def show_guest_list(self, list=None):
+    def show_guest_list_command(self, list=None):
         if not list:
             list = self.database.get_guests()
         self.list_lbx.delete(0, 'end')
@@ -200,7 +205,7 @@ class Guests:
                                  format(i.first_name, i.last_name, i.email, i.phone, i.badge_number))
             self.idx_to_id.append(i.id)
 
-    def search_command(self):
+    def search_guest_command(self):
         if self.first_name_txt.get():
             print(self.first_name_txt.get())
         else:
@@ -211,11 +216,12 @@ class Guests:
         g.email = self.email_txt.get()
         g.phone = self.phone_txt.get()
         g.badge_code = self.badge_code_txt.get()
+        g.badge_number = self.badge_number_txt.get()
         guest_list = self.database.find_guests(g)
-        self.show_guest_list(guest_list)
+        self.show_guest_list_command(guest_list)
 
 
-    def add_command(self):
+    def add_guest_command(self):
         badge_code = self.badge_code_txt.get()
         guest = self.database.find_guest_from_badge(badge_code)
         if guest.found:
@@ -228,10 +234,10 @@ class Guests:
                 self.show_message('Gast is toegevoegd', color='green')
             else:
                 self.show_message('Kon de gast niet toevoegen, onbekende reden', color='red')
-        self.show_guest_list()
+        self.show_guest_list_command()
 
 
-    def update_command(self):
+    def update_guest_command(self):
         guest = self.database.find_guest(self.guest_id)
         if guest.found:
             rslt = self.database.update_guest(self.guest_id, self.badge_code_txt.get(), self.badge_number_txt.get(), self.first_name_txt.get(), self.last_name_txt.get(),
@@ -243,9 +249,10 @@ class Guests:
                 self.show_message('Kon de gegevens niet aanpassen, onbekende reden', color='red')
         else:
             self.show_message('Gast niet gevonden, is de badge code juist?', color='red')
-        self.show_guest_list()
+        self.clear_inputfields_command()
+        self.show_guest_list_command()
 
-    def delete_command(self):
+    def delete_guest_command(self):
         rslt = messagebox.askyesno('Verwijder gast', 'Als u de gast verwijderd, dan worden alle registraties van die gast ook verwijderd!' \
                                    '\n\nWilt u verder gaan?')
         if rslt == False:
@@ -260,7 +267,8 @@ class Guests:
                     self.show_message('Kon de gast niet verwijderen, onbekende reden', color='red')
             else:
                 self.show_message('Gast niet gevonden, is de badge code juist?', color='red')
-        self.show_guest_list()
+        self.show_guest_list_command()
+        self.clear_inputfields_command()
 
     def clear_inputfields_command(self):
         self.first_name_txt.set('')

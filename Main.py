@@ -6,7 +6,9 @@ from Guests import Guests
 #from Registrations import Registrations
 import locale
 
-VERSION = 'V1.0'
+VERSION = 'V1.1'
+
+#V1.1 : change badge to badge-code and and add badge-number and id.  Registrations point to guest-id
 
 def write_slogan():
     print("Tkinter is easy to use!")
@@ -27,7 +29,7 @@ class FGR:
         self.register = Register(root, self.database)
 
         #initialize Guests
-        self.guests = Guests(root, self.database)
+        self.guests = Guests(root, self.database, self.child_window_closes)
 
         #initialize Registrations
         #TODO self.registrations = Registrations(root, self.database)
@@ -44,16 +46,20 @@ class FGR:
         self.change_mode()
 
     #change mode from guest to admin and vice verse
-    def change_mode(self):
-        if self.mode == self.Mode.guest:
+    def change_mode(self, force_mode=None):
+        if force_mode:
+            self.mode = force_mode
+        elif self.mode == self.Mode.guest:
             self.mode = self.Mode.admin
+        else:
+            self.mode = self.Mode.guest
+
+        if self.mode == self.Mode.admin:
             #change mode to admin
             self.main_mnu.entryconfig('Menu', state='normal')
             #self.mode_btn.configure(text='Gast')
             self.root_frm.winfo_toplevel().title("Fablab Gebruikers Registratie {} :: ADMIN MODE".format(VERSION))
-
         else:
-            self.mode = self.Mode.guest
             #change mode to guest
             self.main_mnu.entryconfig('Menu', state='disabled')
             #self.mode_btn.configure(text='Beheerder')
@@ -61,23 +67,20 @@ class FGR:
         #set focus to the badge entry
         self.badge_ent.focus()
 
-    def clear_guest_welcome(self):
-        self.guest_welcome_lbl.config(text="")
+    def get_mode(self):
+        return self.mode
 
     def badge_entered(self, event):
-        #self.guest_lbl.text = ""
         #check if the admin code is used.  If so, switch to admin mode
         if self.badge_ent.get() == '2500':
-            self.change_mode()
+            self.change_mode(force_mode=self.Mode.admin)
         else:
             guest = self.database.find_guest_from_badge(self.badge_ent.get())
             if guest.found :
                 direction = self.register.add_registration(guest)
-                self.guest_welcome_lbl.config(text ="Hallo {}, u heb juist {} gebadged".format(guest.first_name, direction), fg="green")
-                root.after(4000, self.clear_guest_welcome)
+                self.show_message("Hallo {}, u heb juist {} gebadged".format(guest.first_name, direction), 4000, 'green')
             else:
-                self.guest_welcome_lbl.config(text ="U bent nog niet geregistreerd, gelieve hulp te vragen", fg="red")
-                root.after(5000, self.clear_guest_welcome)
+                self.show_message("U bent nog niet geregistreerd, gelieve hulp te vragen", 5000, "red")
         self.badge_ent.delete(0, tk.END)
 
     def update_time(self):
@@ -99,10 +102,14 @@ class FGR:
         #TODO self.menu_mnu.add_command(label="Registraties", command=self.registrations.show_registrations_window)
         #self.menu_mnu.add_command(label="Instellingen", command=self.add_guest)
         #self.menu_mnu.add_command(label="Exporteer", command=self.add_guest)
+        self.menu_mnu.add_separator()
         self.menu_mnu.add_command(label="Gast mode", command=self.change_mode)
         #self.menu_mnu.add_command(label="Wis", command=self.clear_database)
-
         self.root.configure(menu=self.main_mnu)
+
+    def child_window_closes(self):
+        self.change_mode(self.Mode.guest)
+
 
     def init_widgets(self):
         self.fr1_frm = tk.Frame(self.root_frm)
@@ -132,6 +139,15 @@ class FGR:
         self.guest_welcome_lbl.grid(columnspan=3, sticky='W')
 
         tk.Label(self.root_frm, text = "", font=("Times New Roman", 30)).grid(columnspan=3, sticky='E')
+
+
+    def show_message(self, msg, time=2000, color='black'):
+        def clear_msg():
+            self.guest_welcome_lbl.config(text = '')
+        #self.root_frm.focus()
+        self.guest_welcome_lbl.config(text=msg, fg=color)
+        self.root_frm.after(time, clear_msg)
+
 
 if __name__ == "__main__":
     locale.setlocale(locale.LC_ALL, 'nl-BE')
