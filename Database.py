@@ -256,27 +256,17 @@ class FGR_DB :
         self.cnx.commit()
         return rslt
 
-    #offset_from_last : 0 (last item), -1 (item before last item), ...
-    def find_registration_from_guest(self, guest_id, offset_from_last=0):
-        if offset_from_last > 0:
-            #registration not found
-            return Registration()
-        self.csr.execute('SELECT * FROM registrations WHERE guest_id=? ORDER BY time_in DESC', (guest_id,))
-        lst = self.csr.fetchmany(1 - offset_from_last)
-        if not lst:
-            #empty list, nothing found
-            registration = Registration()
+    def find_last_registration_from_guest(self, guest_id):
+        l = self.find_registrations_from_guest(guest_id)
+        if l:
+            r = l[0] #newest registration
         else:
-            try:
-                registration = Registration(lst[0 - offset_from_last])
-            except IndexError as e:
-                #out of range
-                registration = Registration()
-        return registration
+            r = Registration()
+        return r
 
 
-    def get_registrations_and_guests(self):
-        self.csr.execute('SELECT * FROM registrations JOIN guests ON registrations.badge_id = guests.badge ORDER BY time_in DESC')
+    def find_registrations_from_guest(self, guest_id):
+        self.csr.execute('select * FROM registrations WHERE guest_id=? ORDER BY time_in DESC', (guest_id,))
         db_lst = self.csr.fetchall()
         lst = []
         for i in db_lst:
@@ -284,11 +274,17 @@ class FGR_DB :
         return lst
 
 
-    def get_registrations(self):
-        return self.find_registrations(-1)
+    def find_last_registration(self, id):
+        l = self.find_registrations(id)
+        if l:
+            r = l[0] #newest registration
+        else:
+            r = Registration()
+        return r
+
 
     #id < 0 : find all registrations
-    def find_registrations(self, id):
+    def find_registrations(self, id=-1):
         if id < 0:
             self.csr.execute('SELECT * FROM registrations ORDER BY time_in DESC')
         else:
@@ -299,14 +295,14 @@ class FGR_DB :
             lst.append(Registration(i))
         return lst
 
-    def find_registration_from_id(self, id):
-        self.csr.execute('SELECT * FROM registrations WHERE id=? ORDER BY time_in DESC', (id, ))
-        r_db = self.csr.fetchone()
-        if r_db is None:
-            r = Registration()
-        else:
-            r = Registration(r_db)
-        return r
+
+    def get_registrations_and_guests(self):
+        self.csr.execute('SELECT * FROM registrations JOIN guests ON registrations.badge_id = guests.badge ORDER BY time_in DESC')
+        db_lst = self.csr.fetchall()
+        lst = []
+        for i in db_lst:
+            lst.append(Registration(i))
+        return lst
 
 
     def delete_registration(self, id):

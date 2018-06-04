@@ -10,7 +10,7 @@ class Register:
     def add_registration(self, guest):
         now = datetime.datetime.now()
         print(now.date())
-        registration_last = self.database.find_registration_from_guest(guest.id)
+        registration_last = self.database.find_last_registration_from_guest(guest.id)
         direction = 'IN'
         if not registration_last.found:
             #no registrations yet

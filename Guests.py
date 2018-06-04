@@ -8,11 +8,11 @@ class Show_registrations:
         self.root_window = root_window
         self.database = database
 
-    def show_registrations_window(self, id):
+    def show_registrations_window(self, guest_id):
         self.win = tk.Toplevel()
         self.win.wm_title('Registraties')
 
-        guest = self.database.find_guest(id)
+        guest = self.database.find_guest(guest_id)
         if guest.found:
             t = 'Registraties voor : {} {}'.format(guest.first_name, guest.last_name)
         else:
@@ -36,7 +36,7 @@ class Show_registrations:
         #Row 0
         tk.Button(self.win, text="Sluit venster", width=25, command=self.win.destroy).grid(row=1, column=5)
 
-        l  = self.database.find_registrations(id)
+        l  = self.database.find_registrations_from_guest(guest_id)
         self.show_registrations_list(l)
 
     def show_registrations_list(self, list):
@@ -234,6 +234,7 @@ class Guests:
                 self.show_message('Gast is toegevoegd', color='green')
             else:
                 self.show_message('Kon de gast niet toevoegen, onbekende reden', color='red')
+        self.clear_inputfields_command()
         self.show_guest_list_command()
 
 
