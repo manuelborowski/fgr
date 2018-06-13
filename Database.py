@@ -17,9 +17,9 @@ class Guest:
         self.subscription_type = db_row['subscription_type']
         self.subscribed_from = db_row['subscribed_from']
         self.pay_as_you_go_left = db_row['pay_as_you_go_left']
-        if not self.pay_as_you_go_left: self.pay_as_you_go_left=''
+        if not self.pay_as_you_go_left: self.pay_as_you_go_left=0
         self.pay_as_you_go_max = db_row['pay_as_you_go_max']
-        if not self.pay_as_you_go_max: self.pay_as_you_go_max=''
+        if not self.pay_as_you_go_max: self.pay_as_you_go_max=0
         self.email = db_row['email']
         self.phone = db_row['phone']
         self.badge_code = db_row['badge_code']
@@ -61,13 +61,21 @@ class FGR_DB :
         except:
             return None
 
-    def date_be_add_year(be_date, add_year):
+    def add_years_string(be_date, add_year):
         try:
             l = be_date.split(' ')
             l[2] = str(int(l[2]) + add_year)
             return ' '.join(l)
         except:
             return ''
+
+    def add_years(d, years):
+        try:
+            # Return same day of the current year
+            return d.replace(year=d.year + years)
+        except ValueError:
+            # If not same day, it will return other, i.e.  February 29 to March 1 etc.
+            return d + (datetime.date(d.year + years, 1, 1) - datetime.date(d.year, 1, 1))
 
     DB_NAME = 'resources/fgr.db'
 
@@ -141,30 +149,22 @@ class FGR_DB :
     def find_guest(self, id):
         self.csr.execute('SELECT * FROM guests WHERE id=?', (id,))
         r = self.csr.fetchone()
-        if r is None:
-            guest = Guest()
-        else:
-            guest = Guest(r)
-        return guest
+        return Guest(r)
 
     def find_guest_from_badge(self, badge_code):
         self.csr.execute('SELECT * FROM guests WHERE badge_code=?', (badge_code,))
         r = self.csr.fetchone()
-        if r is None:
-            guest = Guest()
-        else:
-            guest = Guest(r)
-        return guest
+        return Guest(r)
 
     def get_guests(self):
-        self.csr.execute('SELECT * FROM guests')
+        self.csr.execute('SELECT * FROM guests ORDER BY last_name, first_name')
         r = self.csr.fetchall()
         l = []
         for i in r:
             l.append(Guest(i))
         return l
 
-    def find_guests(self, guest):
+    def find_guests_from_keywords(self, guest):
         qs = 'SELECT * FROM guests WHERE '
         added = False
         if guest.first_name:
@@ -239,13 +239,22 @@ class FGR_DB :
         self.cnx.commit()
         return rslt
 
-    def add_registration(self, guest_id, time_in):
+    def check_registration_time_format(self, time_string):
         try:
-            self.csr.execute(self.ADD_REGISTRATION, (time_in, None, guest_id))
+            dt = datetime.datetime.strptime(time_string, '%Y-%m-%d %H:%M:%S')
+            return True
+        except Exception as e:
+            return False
+
+    def add_registration(self, guest_id, time_in, time_out=None):
+        rslt = True
+        try:
+            self.csr.execute(self.ADD_REGISTRATION, (time_in, time_out, guest_id))
         except sqlite3.Error as e:
-            pass
+            rslt = False
         self.cnx.commit()
         print("Registration added : {}, {}".format(guest_id, time_in))
+        return rslt
 
     def update_registration(self, id, guest_id, time_in, time_out):
         rslt = True
@@ -274,30 +283,14 @@ class FGR_DB :
         return lst
 
 
-    def find_last_registration(self, id):
-        l = self.find_registrations(id)
-        if l:
-            r = l[0] #newest registration
-        else:
-            r = Registration()
-        return r
-
-
-    #id < 0 : find all registrations
-    def find_registrations(self, id=-1):
-        if id < 0:
-            self.csr.execute('SELECT * FROM registrations ORDER BY time_in DESC')
-        else:
-            self.csr.execute('select * FROM registrations WHERE id=? ORDER BY time_in DESC', (id,))
-        db_lst = self.csr.fetchall()
-        lst = []
-        for i in db_lst:
-            lst.append(Registration(i))
-        return lst
+    def find_registration(self, id):
+        self.csr.execute('SELECT * FROM registrations WHERE id=?', (id,))
+        r = self.csr.fetchone()
+        return  Registration(r)
 
 
     def get_registrations_and_guests(self):
-        self.csr.execute('SELECT * FROM registrations JOIN guests ON registrations.badge_id = guests.badge ORDER BY time_in DESC')
+        self.csr.execute('SELECT * FROM registrations JOIN guests ON registrations.guest_id = guests.id ORDER BY time_in DESC')
         db_lst = self.csr.fetchall()
         lst = []
         for i in db_lst:
@@ -307,12 +300,11 @@ class FGR_DB :
 
     def delete_registration(self, id):
         rslt = True
-        if id < 1:
-            return False
         try:
             self.csr.execute('DELETE FROM registrations WHERE id=?',(id, ))
         except sqlite3.Error as e:
             rslt = False
+        self.cnx.commit()
         return rslt
 
 

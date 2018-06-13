@@ -1,14 +1,17 @@
 import tkinter as tk
+from tkinter import messagebox
 import time
-from Database import FGR_DB
+from datetime import datetime, date
+from Database import FGR_DB, Guest
 from Register import Register
 from Guests import Guests
-#from Registrations import Registrations
+from Registrations import Registrations
 import locale
 
-VERSION = 'V1.1'
+VERSION = 'V1.2'
 
 #V1.1 : change badge to badge-code and and add badge-number and id.  Registrations point to guest-id
+#V1.2 : added registrations, refactored code, updated table headers and content, bugfixes
 
 def write_slogan():
     print("Tkinter is easy to use!")
@@ -32,7 +35,7 @@ class FGR:
         self.guests = Guests(root, self.database, self.child_window_closes)
 
         #initialize Registrations
-        #TODO self.registrations = Registrations(root, self.database)
+        self.registrations = Registrations(root, self.database, self.child_window_closes)
 
         #initialize GUI
         self.root=root
@@ -44,6 +47,10 @@ class FGR:
         #initialize mode
         self.mode = self.Mode.admin
         self.change_mode()
+
+        #set the minimum size of the window
+        root.update()
+        root.minsize(root.winfo_width(), root.winfo_height())
 
     #change mode from guest to admin and vice verse
     def change_mode(self, force_mode=None):
@@ -77,8 +84,34 @@ class FGR:
         else:
             guest = self.database.find_guest_from_badge(self.badge_ent.get())
             if guest.found :
-                direction = self.register.add_registration(guest)
-                self.show_message("Hallo {}, u heb juist {} gebadged".format(guest.first_name, direction), 4000, 'green')
+                direction = self.register.new_registration(guest)
+                till_string = ''
+                if direction == 'IN':
+                    if guest.subscription_type == Guest.SUB_TYPE_SUBSCRIPTION:
+                        print(type(guest.subscribed_from))
+                        print(guest.subscribed_from, FGR_DB.add_years(guest.subscribed_from, 1))
+                        delta = FGR_DB.add_years(guest.subscribed_from, 1) - date.today()
+                        print(delta.days)
+                        if delta.days < 0:
+                            messagebox.showwarning('Abonnement is verlopen',
+                                                   'Opgelet, uw abonnement is verlopen.\nVraag info aan een medewerker')
+                        else:
+                            till_string = ', abonnement is nog {} dagen geldig'.format(delta.days)
+                    else:
+                        guest.pay_as_you_go_left -= 1
+                        if guest.pay_as_you_go_left < 0:
+                            messagebox.showwarning('Beurtenkaart is verlopen',
+                                                   'Opgelet, uw beurtenkaart is verlopen.\nVraag info aan een medewerker')
+                        else:
+                            till_string = ', er zijn nog {} geldige beurten'.format(guest.pay_as_you_go_left)
+                        rslt = self.database.update_guest(guest.id, guest.badge_code,
+                                                          guest.badge_number, guest.first_name,
+                                                          guest.last_name,
+                                                          guest.email, guest.phone,
+                                                          guest.subscription_type,
+                                                          guest.subscribed_from,
+                                                          guest.pay_as_you_go_left, guest.pay_as_you_go_max)
+                self.show_message("Hallo {}, u heb juist {} gebadged{}".format(guest.first_name, direction, till_string), 4000, 'green')
             else:
                 self.show_message("U bent nog niet geregistreerd, gelieve hulp te vragen", 5000, "red")
         self.badge_ent.delete(0, tk.END)
@@ -86,9 +119,6 @@ class FGR:
     def update_time(self):
         self.time_lbl.configure(text=time.strftime('%d/%m/%Y %H:%M:%S'))
         root.after(1000, self.update_time)
-
-    def add_guest(self):
-        print('voeg een nieuwe gast toe')
 
     def clear_database(self):
         answer = tk.Message
@@ -99,9 +129,7 @@ class FGR:
         self.menu_mnu=tk.Menu()
         self.main_mnu.add_cascade(label="Menu", menu=self.menu_mnu)
         self.menu_mnu.add_command(label="Gasten", command=self.guests.show_guests_window)
-        #TODO self.menu_mnu.add_command(label="Registraties", command=self.registrations.show_registrations_window)
-        #self.menu_mnu.add_command(label="Instellingen", command=self.add_guest)
-        #self.menu_mnu.add_command(label="Exporteer", command=self.add_guest)
+        self.menu_mnu.add_command(label="Registraties", command=self.registrations.show_registrations_window)
         self.menu_mnu.add_separator()
         self.menu_mnu.add_command(label="Gast mode", command=self.change_mode)
         #self.menu_mnu.add_command(label="Wis", command=self.clear_database)
@@ -114,11 +142,6 @@ class FGR:
     def init_widgets(self):
         self.fr1_frm = tk.Frame(self.root_frm)
         self.fr1_frm.grid(row=0, column=0, sticky='W')
-        #tk.Label(self.fr1_frm, text='paswoord').grid(row=0, column=0)
-        #self.pwd_ent = tk.Entry(self.fr1_frm, show='*')
-        #self.pwd_ent.grid(row=0, column=1)
-        #self.mode_btn = tk.Button(self.fr1_frm, text='Beheerder', command=self.change_mode)
-        #self.mode_btn.grid(row=0, column=2)
 
         tk.Label(self.root_frm, text = "Welkom bij het fablab\nGelieve uw badge aan te bieden", font=("Times New Roman", 60)).grid(row=1, columnspan=3)
 
@@ -135,7 +158,7 @@ class FGR:
         self.badge_ent.pack(side='left')
         self.badge_ent.bind('<Return>', self.badge_entered)
 
-        self.guest_welcome_lbl = tk.Label(self.root_frm, text ="", font=("Times New Roman", 30))
+        self.guest_welcome_lbl = tk.Label(self.root_frm, text ="", font=("Times New Roman", 20))
         self.guest_welcome_lbl.grid(columnspan=3, sticky='W')
 
         tk.Label(self.root_frm, text = "", font=("Times New Roman", 30)).grid(columnspan=3, sticky='E')
@@ -150,7 +173,8 @@ class FGR:
 
 
 if __name__ == "__main__":
-    locale.setlocale(locale.LC_ALL, 'nl-BE')
+    #locale.setlocale(locale.LC_ALL, 'nl-BE')
+    locale.setlocale(locale.LC_ALL, '')
     root = tk.Tk()
     fgr = FGR(root)
     root.mainloop()

@@ -7,7 +7,7 @@ class Register:
         self.root_window = root_window
         self.database = database
 
-    def add_registration(self, guest):
+    def new_registration(self, guest):
         now = datetime.datetime.now()
         print(now.date())
         registration_last = self.database.find_last_registration_from_guest(guest.id)

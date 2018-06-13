@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 from Database import Guest, FGR_DB
 from Calendar import Datepicker
+import datetime
 
 class Show_registrations:
     def __init__(self, root_window, database):
@@ -9,7 +10,7 @@ class Show_registrations:
         self.database = database
 
     def show_registrations_window(self, guest_id):
-        self.win = tk.Toplevel()
+        self.win = tk.Tk()
         self.win.wm_title('Registraties')
 
         guest = self.database.find_guest(guest_id)
@@ -25,16 +26,20 @@ class Show_registrations:
                 grid(row=1, column=0, columnspan=4, sticky='w')
 
         #ROW 2
-        self.list_lbx = tk.Listbox(self.win, height=30, width=35, font='TkFixedFont')
-        self.list_lbx.grid(row=2, column=0, rowspan=30, columnspan=4)
+        self.list_lbx = tk.Listbox(self.win, height=20, width=35, font='TkFixedFont')
+        self.list_lbx.grid(row=2, column=0, rowspan=20, columnspan=4)
         #self.list_lbx.bind('<<ListboxSelect>>', self.get_selected_row)
         sb1_sb = tk.Scrollbar(self.win)
-        sb1_sb.grid(row=2, column=4, rowspan=30)
+        sb1_sb.grid(row=2, column=4, rowspan=20)
         self.list_lbx.config(yscrollcommand=sb1_sb.set)
         sb1_sb.config(command=self.list_lbx.yview)
 
         #Row 0
         tk.Button(self.win, text="Sluit venster", width=25, command=self.win.destroy).grid(row=1, column=5)
+
+        #set the minimum size of the window
+        self.win.update()
+        self.win.minsize(self.win.winfo_width(), self.win.winfo_height())
 
         l  = self.database.find_registrations_from_guest(guest_id)
         self.show_registrations_list(l)
@@ -123,11 +128,11 @@ class Guests:
 
 
         #Row 5
-        tk.Label(self.win, text='{0:<20}{1:<20}{2:<40}{3:<10}{4:<10}'.format('Voornaam', 'Naam', 'E-mail', 'Telefoon', 'Badge'), font='TkFixedFont'). \
+        tk.Label(self.win, text='{0:<20}{1:<20}{2:<15}{3:<15}{4:<10}'.format('Naam', 'Voornaam', 'Abon/Beurten', 'Code', 'Nummer'), font='TkFixedFont'). \
                 grid(row=5, column=0, columnspan=4, sticky='w')
 
         #ROW 6
-        self.list_lbx = tk.Listbox(self.win, height=20, width=120, font='TkFixedFont')
+        self.list_lbx = tk.Listbox(self.win, height=20, width=100, font='TkFixedFont')
         self.list_lbx.grid(row=6, column=0, rowspan=20, columnspan=4)
         self.list_lbx.bind('<<ListboxSelect>>', self.get_selected_row)
         sb1_sb = tk.Scrollbar(self.win)
@@ -149,6 +154,10 @@ class Guests:
         self.msg_lb = tk.Label(self.win, text = "")
         self.msg_lb.grid(sticky='e', columnspan=3)
 
+        #set the minimum size of the window
+        self.win.update()
+        self.win.minsize(self.win.winfo_width(), self.win.winfo_height())
+
         self.show_guest_list_command()
 
     def close_window_command(self):
@@ -156,7 +165,7 @@ class Guests:
         self.win.destroy()
 
     def sub_from_changed(self, index, value, op):
-        self.sub_till_txt.set(FGR_DB.date_be_add_year(self.sub_from_txt.get(), 1))
+        self.sub_till_txt.set(FGR_DB.add_years_string(self.sub_from_txt.get(), 1))
 
     def show_message(self, msg, time=2000, color='black'):
         def clear_msg():
@@ -184,7 +193,8 @@ class Guests:
                 self.select_subscription_type(guest.subscription_type)
                 if guest.subscription_type == Guest.SUB_TYPE_SUBSCRIPTION:
                     self.sub_from_txt.set(guest.subscribed_from.strftime('%d %B %Y'))
-                    self.sub_till_txt.set(FGR_DB.date_be_add_year(self.sub_from_txt.get(), 1))
+                    #self.sub_till_txt.set(FGR_DB.date_be_add_year(self.sub_from_txt.get(), 1))
+                    self.sub_till_txt.set(FGR_DB.add_years(guest.subscribed_from, 1).strftime('%d %B %Y'))
                 else:
                     self.payg_left_txt.set(guest.pay_as_you_go_left)
                     self.payg_max_txt.set(guest.pay_as_you_go_max)
@@ -200,9 +210,12 @@ class Guests:
         self.list_lbx.delete(0, 'end')
         self.idx_to_id = []
         for i in list:
-            print(i.first_name)
-            self.list_lbx.insert('end', '{0:20.19}{1:20.19}{2:40.39}{3:10.9}{4:10.9}'. \
-                                 format(i.first_name, i.last_name, i.email, i.phone, i.badge_number))
+            if i.subscription_type == Guest.SUB_TYPE_SUBSCRIPTION:
+                sub_info = i.subscribed_from.strftime('%d %B %Y')
+            else:
+                sub_info = str(i.pay_as_you_go_left)
+            self.list_lbx.insert('end', '{0:20.19}{1:20.19}{2:15.14}{3:15.14}{4:10.9}'. \
+                                 format(i.last_name, i.first_name, sub_info, i.badge_code, i.badge_number))
             self.idx_to_id.append(i.id)
 
     def search_guest_command(self):
@@ -217,7 +230,7 @@ class Guests:
         g.phone = self.phone_txt.get()
         g.badge_code = self.badge_code_txt.get()
         g.badge_number = self.badge_number_txt.get()
-        guest_list = self.database.find_guests(g)
+        guest_list = self.database.find_guests_from_keywords(g)
         self.show_guest_list_command(guest_list)
 
 
@@ -227,6 +240,9 @@ class Guests:
         if guest.found:
             self.show_message('Opgepast, een gast met die badge bestaat al', color='red')
         else:
+            if self.sub_type_txt.get() == '':
+                self.sub_type_txt.set(Guest.SUB_TYPE_SUBSCRIPTION)
+                self.sub_from_txt.set(datetime.date.today())
             rslt = self.database.add_guest(badge_code, self.badge_number_txt.get(), self.first_name_txt.get(), self.last_name_txt.get(),
                                            self.email_txt.get(), self.phone_txt.get(), self.sub_type_txt.get(),
                                            self.sub_from_txt.get(), self.payg_left_txt.get(), self.payg_max_txt.get())
@@ -282,6 +298,7 @@ class Guests:
         self.sub_till_txt.set('')
         self.payg_max_txt.set('')
         self.payg_left_txt.set('')
+        self.sub_type_txt.set('')
 
     def select_subscription_type(self, type):
         if type == Guest.SUB_TYPE_SUBSCRIPTION:
