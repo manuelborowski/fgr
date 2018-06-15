@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
-import time
+import time, os
 from datetime import datetime, date
 from Database import FGR_DB, Guest
 from Register import Register
@@ -9,10 +9,11 @@ from Registrations import Registrations
 from Export import Export
 import locale
 
-VERSION = 'V1.2'
+VERSION = 'V2.0'
 
 #V1.1 : change badge to badge-code and and add badge-number and id.  Registrations point to guest-id
 #V1.2 : added registrations, refactored code, updated table headers and content, bugfixes
+#V2.0 : added export function.  Database is backed up when program is started.  Added icon.
 
 def write_slogan():
     print("Tkinter is easy to use!")
@@ -181,5 +182,6 @@ if __name__ == "__main__":
     #locale.setlocale(locale.LC_ALL, 'nl-BE')
     locale.setlocale(locale.LC_ALL, '')
     root = tk.Tk()
+    root.iconbitmap(os.path.join(os.getcwd(), 'fgr.ico'))
     fgr = FGR(root)
     root.mainloop()
