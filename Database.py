@@ -1,5 +1,7 @@
 import sqlite3
 import datetime
+import os
+from shutil import copyfile
 
 class Guest:
     SUB_TYPE_SUBSCRIPTION = 'subscription'
@@ -41,7 +43,7 @@ class Registration:
 
 class FGR_DB :
     def __init__(self):
-        self.cnx = sqlite3.connect(self.DB_NAME, detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
+        self.cnx = sqlite3.connect(self.DB_DEST, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
         self.cnx.row_factory = sqlite3.Row
         self.csr = self.cnx.cursor()
 
@@ -49,6 +51,9 @@ class FGR_DB :
         for name, ddl in self.TABLES.items():
             print("Creating table {}: ".format(name), end='')
             self.csr.execute(ddl)
+
+        #make e backup
+        self.backup_database()
 
     def date_be2iso(be_date):
         try:
@@ -77,7 +82,10 @@ class FGR_DB :
             # If not same day, it will return other, i.e.  February 29 to March 1 etc.
             return d + (datetime.date(d.year + years, 1, 1) - datetime.date(d.year, 1, 1))
 
-    DB_NAME = 'resources/fgr.db'
+    DB_FILE = 'fgr.db'
+    DB_LOCATION = 'resources'
+    DB_DEST = os.path.join(DB_LOCATION, DB_FILE)
+    DB_BACKUP_LOCATION = os.path.join(DB_LOCATION, 'backup')
 
     TABLES = {}
     TABLES['guests'] = (
@@ -249,6 +257,9 @@ class FGR_DB :
     def add_registration(self, guest_id, time_in, time_out=None):
         rslt = True
         try:
+            time_in.replace(microsecond=0)
+            if time_out:
+                time_out.replace(microsecond=0)
             self.csr.execute(self.ADD_REGISTRATION, (time_in, time_out, guest_id))
         except sqlite3.Error as e:
             rslt = False
@@ -289,8 +300,9 @@ class FGR_DB :
         return  Registration(r)
 
 
-    def get_registrations_and_guests(self):
-        self.csr.execute('SELECT * FROM registrations JOIN guests ON registrations.guest_id = guests.id ORDER BY time_in DESC')
+    def get_registrations_and_guests(self, return_db_rows=False):
+        raw_select = self.csr.execute('SELECT * FROM registrations JOIN guests ON registrations.guest_id = guests.id ORDER BY time_in DESC')
+        if return_db_rows: return raw_select
         db_lst = self.csr.fetchall()
         lst = []
         for i in db_lst:
@@ -310,3 +322,13 @@ class FGR_DB :
 
     def close(self):
         self.cnx.close()
+
+    def backup_database(self):
+        try:
+            absolute_backup_path = os.path.join(os.getcwd(), self.DB_BACKUP_LOCATION)
+            if not os.path.isdir(absolute_backup_path):
+                os.mkdir(absolute_backup_path)
+            backup_dest = os.path.join(self.DB_BACKUP_LOCATION, datetime.datetime.now().strftime('%Y%m%d%H%M%S') + ' ' + self.DB_FILE )
+            copyfile(self.DB_DEST, backup_dest)
+        except:
+            print("Could not backup database")

@@ -8,7 +8,7 @@ class Register:
         self.database = database
 
     def new_registration(self, guest):
-        now = datetime.datetime.now()
+        now = datetime.datetime.now().replace(microsecond=0)
         print(now.date())
         registration_last = self.database.find_last_registration_from_guest(guest.id)
         direction = 'IN'

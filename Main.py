@@ -6,6 +6,7 @@ from Database import FGR_DB, Guest
 from Register import Register
 from Guests import Guests
 from Registrations import Registrations
+from Export import Export
 import locale
 
 VERSION = 'V1.2'
@@ -36,6 +37,9 @@ class FGR:
 
         #initialize Registrations
         self.registrations = Registrations(root, self.database, self.child_window_closes)
+
+        #initialize Export
+        self.export = Export(root, self.database, self.child_window_closes)
 
         #initialize GUI
         self.root=root
@@ -130,6 +134,7 @@ class FGR:
         self.main_mnu.add_cascade(label="Menu", menu=self.menu_mnu)
         self.menu_mnu.add_command(label="Gasten", command=self.guests.show_guests_window)
         self.menu_mnu.add_command(label="Registraties", command=self.registrations.show_registrations_window)
+        self.menu_mnu.add_command(label="Export", command=self.export.export_database)
         self.menu_mnu.add_separator()
         self.menu_mnu.add_command(label="Gast mode", command=self.change_mode)
         #self.menu_mnu.add_command(label="Wis", command=self.clear_database)
