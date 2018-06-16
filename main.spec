@@ -3,8 +3,7 @@
 block_cipher = None
 
 
-a = Analysis(['Main.py'],
-             #pathex=['C:\\Users\\aboro\\OD\\ict\\pycharm\\FGR'],
+a = Analysis(['main.py'],
              pathex=['C:\\Users\\aboro\\OneDrive - Campus Sint-Ursula Lier(1)\\ict\\pycharm\\FGR'],
              binaries=[],
              datas=[],
@@ -19,17 +18,13 @@ pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)
 exe = EXE(pyz,
           a.scripts,
-          exclude_binaries=True,
-          name='fablabregistraties',
+          a.binaries,
+          a.zipfiles,
+          a.datas,
+          name='fablabregistrations',
           debug=False,
           strip=False,
           upx=True,
-          console=False)
-coll = COLLECT(exe,
-               a.binaries,
-               #Tree('resources', prefix='resources\\'),
-               a.zipfiles,
-               a.datas,
-               strip=False,
-               upx=True,
-               name='Main')
+          runtime_tmpdir=None,
+          console=True,
+          icon='resources/fgr.ico')

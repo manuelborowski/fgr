@@ -245,7 +245,7 @@ class Guests:
                 self.sub_from_txt.set(datetime.date.today())
             rslt = self.database.add_guest(badge_code, self.badge_number_txt.get(), self.first_name_txt.get(), self.last_name_txt.get(),
                                            self.email_txt.get(), self.phone_txt.get(), self.sub_type_txt.get(),
-                                           self.sub_from_txt.get(), self.payg_left_txt.get(), self.payg_max_txt.get())
+                                           FGR_DB.date_be2iso(self.sub_from_txt.get()), self.payg_left_txt.get(), self.payg_max_txt.get())
             if rslt:
                 self.show_message('Gast is toegevoegd', color='green')
             else:
