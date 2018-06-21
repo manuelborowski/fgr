@@ -3,13 +3,15 @@ from tkinter import messagebox
 import datetime
 from Database import FGR_DB, Guest
 from Calendar import Datepicker
+import logging
 
 class Registrations:
-    def __init__(self, root_window, database, close_cb):
+    def __init__(self, root_window, database, log_handle, close_cb):
         self.root_window = root_window
         self.database = database
         self.close_cb = close_cb
         self.guest_name_to_id = {}
+        self.log = logging.getLogger('{}.Registrations'.format(log_handle))
 
     def show_registrations_window(self):
         self.win = tk.Toplevel()
@@ -54,7 +56,7 @@ class Registrations:
 
         #Row 1, Column 5
         tk.Button(self.win, text="Voeg reservatie toe", width=25, command=self.add_registration_command).grid(row=0, column=5)
-        tk.Button(self.win, text="Bewaar veranderingen", width=25, command=self.update_command).grid(row=1, column=5)
+        tk.Button(self.win, text="Bewaar veranderingen", width=25, command=self.update_registration_command).grid(row=1, column=5)
         tk.Button(self.win, text="Verwijder geselecteerde registratie", width=25, command=self.delete_command).grid(row=2, column=5)
         tk.Button(self.win, text="Wis velden", width=25, command=self.clear_inputfields_command).grid(row=4, column=5)
         tk.Button(self.win, text="Alle reservaties", width=25, command=self.show_registrations_list).grid(row=6, column=5)
@@ -111,7 +113,6 @@ class Registrations:
     def get_selected_row(self, event):
         try:
             idx = self.list_lbx.curselection()[0]
-            print(idx, self.idx_to_id[idx])
             if self.idx_to_id[idx] == None: return #non valid entry
             r = self.database.find_registration(self.idx_to_id[idx])
             if r.found:
@@ -119,7 +120,6 @@ class Registrations:
                 if g.found:
                     self.clear_inputfields_command()
                     self.registration_id = r.id
-                    print(g.first_name)
                     self.date_txt.set(r.time_in.strftime('%d %B %Y'))
                     time_in = r.time_in.strftime('%H:%M')
                     if r.time_out is not None:
@@ -133,43 +133,44 @@ class Registrations:
             pass
 
     def add_registration_command(self):
-        time_in = FGR_DB.date_be2iso(self.date_txt.get()) + ' ' + self.in_txt.get() + ':00'
-        time_out = FGR_DB.date_be2iso(self.date_txt.get()) + ' ' + self.out_txt.get() + ':00'
-        if not self.database.check_registration_time_format(time_in) or not self.database.check_registration_time_format(time_out):
+        try:
+            time_in = datetime.datetime.strptime(self.date_txt.get() + ' ' + self.in_txt.get() + ':00', '%d %B %Y %H:%M:%S')
+            time_out = datetime.datetime.strptime(self.date_txt.get() + ' ' + self.out_txt.get() + ':00', '%d %B %Y %H:%M:%S')
+        except:
             self.show_message('In- of Uit-tijd is niet correct', color='red')
+            return
+        try:
+            guest_id = self.guest_name_to_id[self.name_txt.get()]
+        except:
+            self.show_message('Gast is niet gevonden', color='red')
+            return
+        rslt = self.database.add_registration(guest_id, time_in, time_out)
+        if rslt:
+            self.show_message('Registratie is toegevoegd', color='green')
         else:
+            self.show_message('Kon de registratie niet toevoegen, onbekende reden', color='red')
+        self.show_registrations_list()
+        self.clear_inputfields_command()
+
+
+    def update_registration_command(self):
+        registration = self.database.find_registration(self.registration_id)
+        if registration.found:
+            try:
+                time_in = datetime.datetime.strptime(self.date_txt.get() + ' ' + self.in_txt.get() + ':00', '%d %B %Y %H:%M:%S')
+                time_out = datetime.datetime.strptime(self.date_txt.get() + ' ' + self.out_txt.get() + ':00', '%d %B %Y %H:%M:%S')
+            except:
+                self.show_message('In- of Uit-tijd is niet correct', color='red')
+                return
             try:
                 guest_id = self.guest_name_to_id[self.name_txt.get()]
             except:
-                self.show_message('Gast is niet gevonden', color='red')
-                return
-            rslt = self.database.add_registration(guest_id, time_in, time_out)
+                guest_id = registration.guest_id
+            rslt = self.database.update_registration(self.registration_id, guest_id, time_in, time_out)
             if rslt:
-                self.show_message('Registratie is toegevoegd', color='green')
+                self.show_message('Registratie is aangepast', color='green')
             else:
-                self.show_message('Kon de registratie niet toevoegen, onbekende reden', color='red')
-            self.show_registrations_list()
-            self.clear_inputfields_command()
-
-
-    def update_command(self):
-        registration = self.database.find_registration(self.registration_id)
-        if registration.found:
-            time_in = FGR_DB.date_be2iso(self.date_txt.get()) + ' ' + self.in_txt.get() + ':00'
-            time_out = FGR_DB.date_be2iso(self.date_txt.get()) + ' ' + self.out_txt.get() + ':00'
-            if not self.database.check_registration_time_format(
-                    time_in) or not self.database.check_registration_time_format(time_out):
-                self.show_message('In- of Uit-tijd is niet correct')
-            else:
-                try:
-                    guest_id = self.guest_name_to_id[self.name_txt.get()]
-                except:
-                    guest_id = registration.guest_id
-                rslt = self.database.update_registration(self.registration_id, guest_id, time_in, time_out)
-                if rslt:
-                    self.show_message('Registratie is aangepast', color='green')
-                else:
-                    self.show_message('Kon de gegevens niet aanpassen, onbekende reden', color='red')
+                self.show_message('Kon de gegevens niet aanpassen, onbekende reden', color='red')
         else:
             self.show_message('Registratie niet gevonden, onbekende reden', color='red')
         self.show_registrations_list()

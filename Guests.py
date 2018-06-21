@@ -3,6 +3,7 @@ from tkinter import messagebox
 from Database import Guest, FGR_DB
 from Calendar import Datepicker
 import datetime
+import logging
 
 class Show_registrations:
     def __init__(self, root_window, database):
@@ -61,10 +62,11 @@ class Show_registrations:
 
 
 class Guests:
-    def __init__(self, root_window, database, close_cb):
+    def __init__(self, root_window, database, log_handle, close_cb):
         self.root_window = root_window
         self.database = database
         self.close_cb = close_cb
+        self.log = logging.getLogger('{}.Guests'.format(log_handle))
         self.registrations_window = Show_registrations(root_window, database)
 
 
@@ -177,11 +179,10 @@ class Guests:
     def get_selected_row(self, event):
         try:
             idx = self.list_lbx.curselection()[0]
-            print(idx, self.idx_to_id[idx])
             guest = self.database.find_guest(self.idx_to_id[idx])
             self.clear_inputfields_command()
             if guest.found:
-                print(guest.first_name)
+                self.log.info(guest.first_name + ' ' + guest.last_name)
                 self.guest_id = guest.id
                 self.badge_code_txt.set(guest.badge_code)
                 self.badge_number_txt.set(guest.badge_number)
@@ -220,9 +221,9 @@ class Guests:
 
     def search_guest_command(self):
         if self.first_name_txt.get():
-            print(self.first_name_txt.get())
+            self.log.info(self.first_name_txt.get())
         else:
-            print('niks')
+            self.log.info('niks')
         g = Guest()
         g.first_name = self.first_name_txt.get()
         g.last_name = self.last_name_txt.get()
@@ -242,10 +243,27 @@ class Guests:
         else:
             if self.sub_type_txt.get() == '':
                 self.sub_type_txt.set(Guest.SUB_TYPE_SUBSCRIPTION)
-                self.sub_from_txt.set(datetime.date.today())
+
+            if self.sub_type_txt.get() == Guest.SUB_TYPE_SUBSCRIPTION:
+                start_date = FGR_DB.date_be2iso(self.sub_from_txt.get())
+                if not start_date:
+                    start_date = datetime.date.today()
+                self.payg_left_txt.set(0)
+                self.payg_max_txt.set(0)
+            else:
+                start_date = None
+                try:
+                    int(self.payg_left_txt.get())
+                except:
+                    self.payg_left_txt.set(10)
+                try:
+                    int(self.payg_max_txt.get())
+                except:
+                    self.payg_max_txt.set(10)
+
             rslt = self.database.add_guest(badge_code, self.badge_number_txt.get(), self.first_name_txt.get(), self.last_name_txt.get(),
                                            self.email_txt.get(), self.phone_txt.get(), self.sub_type_txt.get(),
-                                           FGR_DB.date_be2iso(self.sub_from_txt.get()), self.payg_left_txt.get(), self.payg_max_txt.get())
+                                           start_date, self.payg_left_txt.get(), self.payg_max_txt.get())
             if rslt:
                 self.show_message('Gast is toegevoegd', color='green')
             else:
@@ -257,9 +275,27 @@ class Guests:
     def update_guest_command(self):
         guest = self.database.find_guest(self.guest_id)
         if guest.found:
+
+            if self.sub_type_txt.get() == Guest.SUB_TYPE_SUBSCRIPTION:
+                start_date = FGR_DB.date_be2iso(self.sub_from_txt.get())
+                if not start_date:
+                    start_date = datetime.date.today()
+                self.payg_left_txt.set(0)
+                self.payg_max_txt.set(0)
+            else:
+                start_date = None
+                try:
+                    int(self.payg_left_txt.get())
+                except:
+                    self.payg_left_txt.set(10)
+                try:
+                    int(self.payg_max_txt.get())
+                except:
+                    self.payg_max_txt.set(10)
+
             rslt = self.database.update_guest(self.guest_id, self.badge_code_txt.get(), self.badge_number_txt.get(), self.first_name_txt.get(), self.last_name_txt.get(),
                                               self.email_txt.get(), self.phone_txt.get(), self.sub_type_txt.get(),
-                                              FGR_DB.date_be2iso(self.sub_from_txt.get()), self.payg_left_txt.get(), self.payg_max_txt.get())
+                                              start_date, self.payg_left_txt.get(), self.payg_max_txt.get())
             if rslt:
                 self.show_message('Gast is aangepast', color='green')
             else:

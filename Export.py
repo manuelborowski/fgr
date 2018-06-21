@@ -2,12 +2,14 @@ from tkinter import filedialog
 import datetime
 import csv
 import os
+import logging
 
 class Export:
-    def __init__(self, root_window, database, close_cb):
+    def __init__(self, root_window, database, log_handle, close_cb):
         self.root_window = root_window
         self.database = database
         self.close_cb = close_cb
+        self.log = logging.getLogger('{}.Export'.format(log_handle))
 
 
     def export_database(self):
@@ -19,7 +21,7 @@ class Export:
         options['initialfile'] = 'fgr-export-' + now
         options['title'] = 'Bewaar database in CSV bestand'
         filename = filedialog.asksaveasfilename(**options)
-        print(filename)
+        self.log.info('exporteer naar : {}'.format(filename))
         try:
             f = open(filename, 'w', newline="")
             data = self.database.get_registrations_and_guests(True)

@@ -8,16 +8,21 @@ from Guests import Guests
 from Registrations import Registrations
 from Export import Export
 import locale
+import logging, logging.handlers
 
-VERSION = 'V2.1'
+VERSION = 'V2.2'
 
 #V1.1 : change badge to badge-code and and add badge-number and id.  Registrations point to guest-id
 #V1.2 : added registrations, refactored code, updated table headers and content, bugfixes
 #V2.0 : added export function.  Database is backed up when program is started.  Added icon.
 #V2.1 : bugfix : guest subscription date was saved in wrong format
+#V2.2 : added support for logging, changed print to logging
 
 def write_slogan():
     print("Tkinter is easy to use!")
+
+LOG_FILENAME = 'log/fgr-log.txt'
+LOG_HANDLE = 'FGR'
 
 class FGR:
     class Mode:
@@ -25,23 +30,25 @@ class FGR:
         admin = 'BEHEERDER'
 
 
-    def __init__(self, root=None):
+    def __init__(self, root=None, log=None):
+
+        self.log = log
 
         #initialize database
-        self.database = FGR_DB()
+        self.database = FGR_DB(LOG_HANDLE)
         #{self.database.test_populate_database()
 
         #initialize register
-        self.register = Register(root, self.database)
+        self.register = Register(root, self.database, LOG_HANDLE)
 
         #initialize Guests
-        self.guests = Guests(root, self.database, self.child_window_closes)
+        self.guests = Guests(root, self.database, LOG_HANDLE, self.child_window_closes)
 
         #initialize Registrations
-        self.registrations = Registrations(root, self.database, self.child_window_closes)
+        self.registrations = Registrations(root, self.database,LOG_HANDLE,  self.child_window_closes)
 
         #initialize Export
-        self.export = Export(root, self.database, self.child_window_closes)
+        self.export = Export(root, self.database, LOG_HANDLE, self.child_window_closes)
 
         #initialize GUI
         self.root=root
@@ -94,10 +101,7 @@ class FGR:
                 till_string = ''
                 if direction == 'IN':
                     if guest.subscription_type == Guest.SUB_TYPE_SUBSCRIPTION:
-                        print(type(guest.subscribed_from))
-                        print(guest.subscribed_from, FGR_DB.add_years(guest.subscribed_from, 1))
                         delta = FGR_DB.add_years(guest.subscribed_from, 1) - date.today()
-                        print(delta.days)
                         if delta.days < 0:
                             messagebox.showwarning('Abonnement is verlopen',
                                                    'Opgelet, uw abonnement is verlopen.\nVraag info aan een medewerker')
@@ -183,5 +187,18 @@ if __name__ == "__main__":
     locale.setlocale(locale.LC_ALL, '')
     root = tk.Tk()
     root.iconbitmap(os.path.join(os.getcwd(), 'resources//fgr.ico'))
-    fgr = FGR(root)
+
+    # Set up a specific logger with our desired output level
+    log = logging.getLogger(LOG_HANDLE)
+    log.setLevel(logging.DEBUG)
+
+    # Add the log message handler to the logger
+    log_handler = logging.handlers.RotatingFileHandler(LOG_FILENAME, maxBytes=10 * 1024, backupCount=5)
+    log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    log_handler.setFormatter(log_formatter)
+    log.addHandler(log_handler)
+
+    log.info('start FGR')
+
+    fgr = FGR(root, log)
     root.mainloop()

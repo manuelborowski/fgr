@@ -1,6 +1,7 @@
 import sqlite3
 import datetime
 import os
+import logging
 from shutil import copyfile
 
 class Guest:
@@ -42,14 +43,15 @@ class Registration:
 
 
 class FGR_DB :
-    def __init__(self):
+    def __init__(self, log_handle):
         self.cnx = sqlite3.connect(self.DB_DEST, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
         self.cnx.row_factory = sqlite3.Row
         self.csr = self.cnx.cursor()
+        self.log = logging.getLogger('{}.Database'.format(log_handle))
 
         #create tables, if they do not exist yet
         for name, ddl in self.TABLES.items():
-            print("Creating table {}: ".format(name), end='')
+            self.log.info("Creating table {}: ".format(name))
             self.csr.execute(ddl)
 
         #make e backup
@@ -150,7 +152,7 @@ class FGR_DB :
         for i in registrations:
             self.csr.execute(self.ADD_REGISTRATION, i)
 
-        print('Database populated')
+        self.log.info('Database populated')
         self.cnx.commit()
 
 
@@ -208,7 +210,7 @@ class FGR_DB :
             qs += 'badge_number LIKE \'%{}%\''.format(guest.badge_number)
             added = True
 
-        print(qs)
+        self.log.info(qs)
         self.csr.execute(qs)
         l = []
         r = self.csr.fetchall()
@@ -224,7 +226,7 @@ class FGR_DB :
         except sqlite3.Error as e:
             rslt = False
         self.cnx.commit()
-        print("Guest added : {}, {}, {}, {}, {}, {}".format(first_name, last_name, email, phone, badge_number, sub_type))
+        self.log.info("Guest added : {}, {}, {}, {}, {}, {}".format(first_name, last_name, email, phone, badge_number, sub_type))
         return rslt
 
 
@@ -257,14 +259,14 @@ class FGR_DB :
     def add_registration(self, guest_id, time_in, time_out=None):
         rslt = True
         try:
-            time_in.replace(microsecond=0)
-            if time_out:
-                time_out.replace(microsecond=0)
+            # time_in.replace(microsecond=0)
+            # if time_out:
+            #     time_out.replace(microsecond=0)
             self.csr.execute(self.ADD_REGISTRATION, (time_in, time_out, guest_id))
-        except sqlite3.Error as e:
+        except Exception as e:
             rslt = False
         self.cnx.commit()
-        print("Registration added : {}, {}".format(guest_id, time_in))
+        self.log.info("Registration added : {}, {}".format(guest_id, time_in))
         return rslt
 
     def update_registration(self, id, guest_id, time_in, time_out):
@@ -331,4 +333,4 @@ class FGR_DB :
             backup_dest = os.path.join(self.DB_BACKUP_LOCATION, datetime.datetime.now().strftime('%Y%m%d%H%M%S') + ' ' + self.DB_FILE )
             copyfile(self.DB_DEST, backup_dest)
         except:
-            print("Could not backup database")
+            self.log.info("Could not backup database")
