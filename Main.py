@@ -9,14 +9,16 @@ from Registrations import Registrations
 from Export import Export
 import locale
 import logging, logging.handlers
+from Base import process_code
 
-VERSION = 'V2.2'
+VERSION = 'V2.3'
 
 #V1.1 : change badge to badge-code and and add badge-number and id.  Registrations point to guest-id
 #V1.2 : added registrations, refactored code, updated table headers and content, bugfixes
 #V2.0 : added export function.  Database is backed up when program is started.  Added icon.
 #V2.1 : bugfix : guest subscription date was saved in wrong format
 #V2.2 : added support for logging, changed print to logging
+#V2.3 : added support for muliple keyboardbatchreader (decimal, hexadecimal, capitals, no capitals)
 
 def write_slogan():
     print("Tkinter is easy to use!")
@@ -92,11 +94,15 @@ class FGR:
 
     def badge_entered(self, event):
         #check if the admin code is used.  If so, switch to admin mode
+        guest_found = False
         if self.badge_ent.get() == '2500':
             self.change_mode(force_mode=self.Mode.admin)
         else:
-            guest = self.database.find_guest_from_badge(self.badge_ent.get())
-            if guest.found :
+            is_valid_code, is_rfid_code, code =  process_code(self.badge_ent.get())
+            if is_valid_code and is_rfid_code:
+                guest = self.database.find_guest_from_badge(code)
+                guest_found = guest.found
+            if guest_found :
                 direction = self.register.new_registration(guest)
                 till_string = ''
                 if direction == 'IN':

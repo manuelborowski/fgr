@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 from Database import Guest, FGR_DB
+from Base import process_code
 from Calendar import Datepicker
 import datetime
 import logging
@@ -123,7 +124,9 @@ class Guests:
         #Row 4
         tk.Label(self.win, text="Badge-code").grid(row=4, column=0)
         self.badge_code_txt = tk.StringVar()
-        tk.Entry(self.win, textvariable = self.badge_code_txt, width=40).grid(row=4, column=1)
+        badge_code_entry = tk.Entry(self.win, textvariable = self.badge_code_txt, width=40)
+        badge_code_entry.grid(row=4, column=1)
+        badge_code_entry.bind('<Return>', self.badge_code_enter)
         tk.Label(self.win, text="Badge-nummer").grid(row=4, column=2)
         self.badge_number_txt = tk.StringVar()
         tk.Entry(self.win, textvariable = self.badge_number_txt, width=40).grid(row=4, column=3)
@@ -234,6 +237,12 @@ class Guests:
         guest_list = self.database.find_guests_from_keywords(g)
         self.show_guest_list_command(guest_list)
 
+    def badge_code_enter(self, event):
+        is_valid_code, is_rfid_code, badge_code = process_code(self.badge_code_txt.get())
+        if is_valid_code and is_rfid_code:
+            self.badge_code_txt.set(badge_code)
+        else:
+            self.badge_code_txt.set('Ongeldige code')
 
     def add_guest_command(self):
         badge_code = self.badge_code_txt.get()
